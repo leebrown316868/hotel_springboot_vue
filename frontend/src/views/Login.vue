@@ -2,6 +2,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { login } from '@/utils/auth'
 
 const router = useRouter()
 const loading = ref(false)
@@ -11,19 +12,29 @@ const loginForm = reactive({
   remember: false
 })
 
-const handleLogin = () => {
+const handleLogin = async () => {
   if (!loginForm.email || !loginForm.password) {
     ElMessage.warning('请输入邮箱和密码')
     return
   }
 
   loading.value = true
-  
-  setTimeout(() => {
-    loading.value = false
+
+  try {
+    await login(loginForm.email, loginForm.password)
     ElMessage.success('登录成功！正在跳转...')
     router.push('/dashboard')
-  }, 1000)
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || '登录失败，请检查邮箱和密码'
+    ElMessage.error(errorMessage)
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleRegister = () => {
+  ElMessage.info('注册功能即将开放')
+  // TODO: 实现注册功能
 }
 </script>
 
@@ -87,8 +98,8 @@ const handleLogin = () => {
           
           <footer class="mt-8 pt-6 border-t border-gray-100 text-center">
             <p class="text-sm text-gray-600">
-              还没有账户？ 
-              <a href="#" class="font-semibold text-blue-600 hover:text-blue-700 transition-colors">注册新账户</a>
+              还没有账户？
+              <a @click="handleRegister" class="font-semibold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">注册新账户</a>
             </p>
           </footer>
         </div>

@@ -70,4 +70,51 @@ public class SQLiteDialect extends Dialect {
             }
         };
     }
+
+    @Override
+    public boolean hasAlterTable() {
+        return false;
+    }
+
+    @Override
+    public boolean dropConstraints() {
+        return false;
+    }
+
+    @Override
+    public String getForUpdateString() {
+        return "";
+    }
+
+    @Override
+    public boolean supportsOuterJoinForUpdate() {
+        return false;
+    }
+
+    @Override
+    public String getDropForeignKeyString() {
+        throw new UnsupportedOperationException("No drop foreign key syntax supported by SQLiteDialect");
+    }
+
+    @Override
+    public String getAddForeignKeyConstraintString(String constraintName,
+                                                   String[] foreignKey, String referencedTable, String[] primaryKey,
+                                                   boolean referencesPrimaryKey) {
+        throw new UnsupportedOperationException("No add foreign key syntax supported by SQLiteDialect");
+    }
+
+    @Override
+    public String getAddPrimaryKeyConstraintString(String constraintName) {
+        throw new UnsupportedOperationException("No add primary key syntax supported by SQLiteDialect");
+    }
+
+    @Override
+    public boolean supportsIfExistsBeforeTableName() {
+        return true;
+    }
+
+    @Override
+    public boolean supportsCascadeDelete() {
+        return false;
+    }
 }

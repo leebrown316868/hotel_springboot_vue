@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { isAuthenticated } from '@/utils/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -15,42 +16,50 @@ const router = createRouter({
     {
       path: '/dashboard',
       name: 'dashboard',
-      component: () => import('../views/Dashboard.vue')
+      component: () => import('../views/Dashboard.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/rooms',
       name: 'rooms',
-      component: () => import('../views/Rooms.vue')
+      component: () => import('../views/Rooms.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/guests',
       name: 'guests',
-      component: () => import('../views/Guests.vue')
+      component: () => import('../views/Guests.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/analytics',
       name: 'analytics',
-      component: () => import('../views/Analytics.vue')
+      component: () => import('../views/Analytics.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/settings',
       name: 'settings',
-      component: () => import('../views/Settings.vue')
+      component: () => import('../views/Settings.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/bookings/new',
       name: 'booking-wizard',
-      component: () => import('../views/BookingWizard.vue')
+      component: () => import('../views/BookingWizard.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/staff-bookings',
       name: 'staff-bookings',
-      component: () => import('../views/StaffBookings.vue')
+      component: () => import('../views/StaffBookings.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/rooms-resource',
       name: 'rooms-resource',
-      component: () => import('../views/RoomsResource.vue')
+      component: () => import('../views/RoomsResource.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/browse-rooms',
@@ -60,19 +69,37 @@ const router = createRouter({
     {
       path: '/my-bookings',
       name: 'my-bookings',
-      component: () => import('../views/MyBookings.vue')
+      component: () => import('../views/MyBookings.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/profile',
       name: 'profile',
-      component: () => import('../views/Profile.vue')
+      component: () => import('../views/Profile.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/history-feedback',
       name: 'history-feedback',
-      component: () => import('../views/HistoryFeedback.vue')
+      component: () => import('../views/HistoryFeedback.vue'),
+      meta: { requiresAuth: true }
     }
   ]
+})
+
+// Navigation guard for authentication
+router.beforeEach((to, from, next) => {
+  const requiresAuth = to.meta.requiresAuth
+
+  if (requiresAuth && !isAuthenticated()) {
+    // Redirect to login if not authenticated
+    next('/login')
+  } else if (to.path === '/login' && isAuthenticated()) {
+    // Redirect to dashboard if already authenticated
+    next('/dashboard')
+  } else {
+    next()
+  }
 })
 
 export default router

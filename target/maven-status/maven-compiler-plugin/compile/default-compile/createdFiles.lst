@@ -15,6 +15,7 @@ com\hotel\HotelApplication.class
 com\hotel\config\CorsConfig.class
 com\hotel\config\DatabaseConfig.class
 com\hotel\dto\AuthRequest.class
+com\hotel\init\DataInitializer.class
 com\hotel\config\JwtConfig.class
 com\hotel\dto\UserResponse$UserResponseBuilder.class
 com\hotel\dto\RegisterRequest.class

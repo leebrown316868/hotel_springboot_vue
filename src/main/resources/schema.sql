@@ -1,0 +1,10 @@
+-- Create users table
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email VARCHAR NOT NULL UNIQUE,
+    password VARCHAR NOT NULL,
+    name VARCHAR NOT NULL,
+    role VARCHAR NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
