@@ -52,7 +52,7 @@ public class RoomMapper {
                 .build();
     }
 
-    private RoomType parseRoomType(String type) {
+    public RoomType parseRoomType(String type) {
         if (type == null || type.trim().isEmpty()) {
             return null;
         }
