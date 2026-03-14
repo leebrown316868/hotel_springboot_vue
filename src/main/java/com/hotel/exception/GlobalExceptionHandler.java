@@ -75,6 +75,22 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
     }
 
+    @ExceptionHandler(GuestNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleGuestNotFoundException(GuestNotFoundException ex) {
+        log.error("Guest not found exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(GuestAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleGuestAlreadyExistsException(GuestAlreadyExistsException ex) {
+        log.error("Guest already exists exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(HttpStatus.CONFLICT.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
