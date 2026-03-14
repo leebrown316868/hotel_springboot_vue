@@ -8,3 +8,15 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
+
+-- Create rooms table
+CREATE TABLE IF NOT EXISTS rooms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    number VARCHAR NOT NULL UNIQUE,
+    floor VARCHAR NOT NULL,
+    type VARCHAR NOT NULL,
+    status VARCHAR NOT NULL,
+    price DECIMAL NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);

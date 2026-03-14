@@ -73,7 +73,7 @@ public class SQLiteDialect extends Dialect {
 
     @Override
     public boolean hasAlterTable() {
-        return false;
+        return true;
     }
 
     @Override
@@ -106,6 +106,16 @@ public class SQLiteDialect extends Dialect {
     @Override
     public String getAddPrimaryKeyConstraintString(String constraintName) {
         throw new UnsupportedOperationException("No add primary key syntax supported by SQLiteDialect");
+    }
+
+    @Override
+    public String getAddColumnString() {
+        return "add column";
+    }
+
+    @Override
+    public boolean supportsIfExistsAfterAlterTable() {
+        return false;
     }
 
     @Override
