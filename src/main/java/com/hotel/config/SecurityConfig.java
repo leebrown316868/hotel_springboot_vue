@@ -32,7 +32,7 @@ public class SecurityConfig {
             .authorizeRequests()
             .antMatchers("/auth/login", "/auth/register", "/auth/logout").permitAll()
             .antMatchers("/auth/me").permitAll()
-            .antMatchers("/api/rooms/**").authenticated()
+            .antMatchers("/rooms/**").authenticated()
             .anyRequest().authenticated()
             .and()
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
