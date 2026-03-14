@@ -1,0 +1,5 @@
+{
+  "name": "GrandHorizon 酒店管理系统",
+  "description": "一个包含仪表板、客房管理和预订向导的综合酒店管理系统。",
+  "requestFramePermissions": []
+}
