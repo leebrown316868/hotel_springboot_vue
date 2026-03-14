@@ -51,6 +51,30 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    @ExceptionHandler(RoomNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRoomNotFoundException(RoomNotFoundException ex) {
+        log.error("Room not found exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(RoomAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRoomAlreadyExistsException(RoomAlreadyExistsException ex) {
+        log.error("Room already exists exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(HttpStatus.CONFLICT.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidRoomStatusException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidRoomStatusException(InvalidRoomStatusException ex) {
+        log.error("Invalid room status exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
