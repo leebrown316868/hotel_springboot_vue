@@ -19,6 +19,7 @@ com\hotel\config\JwtConfig.class
 com\hotel\dto\UserResponse$UserResponseBuilder.class
 com\hotel\dto\RegisterRequest.class
 com\hotel\config\SecurityConfig.class
+com\hotel\config\SQLiteDialect$1.class
 com\hotel\security\UserDetailsImpl.class
 com\hotel\repository\UserRepository.class
 com\hotel\dto\ApiResponse$ApiResponseBuilder.class
