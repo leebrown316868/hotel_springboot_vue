@@ -2,25 +2,25 @@ import api from './api'
 import type { AuthRequest, AuthResponse, RegisterRequest, User } from '../types/auth'
 
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
-  const response = await api.post<AuthResponse>('/auth/login', { email, password })
-  const { token, user } = response.data
+  const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', { email, password })
+  const { token, user } = response.data.data
 
   // Store token and user info
   localStorage.setItem('token', token)
   localStorage.setItem('user', JSON.stringify(user))
 
-  return response.data
+  return response.data.data
 }
 
 export const register = async (email: string, password: string, name: string): Promise<AuthResponse> => {
-  const response = await api.post<AuthResponse>('/auth/register', { email, password, name })
-  const { token, user } = response.data
+  const response = await api.post<ApiResponse<AuthResponse>>('/auth/register', { email, password, name })
+  const { token, user } = response.data.data
 
   // Store token and user info
   localStorage.setItem('token', token)
   localStorage.setItem('user', JSON.stringify(user))
 
-  return response.data
+  return response.data.data
 }
 
 export const logout = async (): Promise<void> => {
@@ -34,8 +34,8 @@ export const logout = async (): Promise<void> => {
 }
 
 export const getCurrentUser = async (): Promise<User> => {
-  const response = await api.get<{ user: User }>('/auth/me')
-  return response.data.user
+  const response = await api.get<ApiResponse<User>>('/auth/me')
+  return response.data.data
 }
 
 export const getToken = (): string | null => {
@@ -56,4 +56,13 @@ export const getUser = (): User | null => {
 
 export const isAuthenticated = (): boolean => {
   return !!getToken()
+}
+
+// 更新localStorage中的用户信息
+export const updateCurrentUser = (updates: any): void => {
+  const user = getUser()
+  if (user) {
+    const updatedUser = { ...user, ...updates }
+    localStorage.setItem('user', JSON.stringify(updatedUser))
+  }
 }

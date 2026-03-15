@@ -76,13 +76,13 @@ const router = createRouter({
       path: '/profile',
       name: 'profile',
       component: () => import('../views/Profile.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, roles: ['CUSTOMER'] }
     },
     {
       path: '/history-feedback',
       name: 'history-feedback',
       component: () => import('../views/HistoryFeedback.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, roles: ['CUSTOMER'] }
     }
   ]
 })
