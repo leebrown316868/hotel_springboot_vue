@@ -264,6 +264,17 @@ public class DataInitializer {
                 logger.debug("Capacity column already exists in rooms table");
             }
             rs.close();
+
+            // Check if room_types_config column exists in system_settings table
+            ResultSet rs2 = conn.getMetaData().getColumns(null, null, "system_settings", "room_types_config");
+            if (!rs2.next()) {
+                logger.info("Adding room_types_config column to system_settings table...");
+                conn.createStatement().executeUpdate("ALTER TABLE system_settings ADD COLUMN room_types_config TEXT");
+                logger.info("room_types_config column added successfully");
+            } else {
+                logger.debug("room_types_config column already exists in system_settings table");
+            }
+            rs2.close();
         } catch (Exception e) {
             logger.warn("Database migration failed (may already exist): {}", e.getMessage());
         }
