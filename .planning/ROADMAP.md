@@ -11,7 +11,7 @@
 | 1. 项目基础与认证 | 3/3 | Complete   | 2026-03-14 |
 | 2. 房间管理 | 3/3 | Complete   | 2026-03-14 |
 | 3. 客户管理 | 3/3 | Complete   | 2026-03-14 |
-| 4. 预订管理 | 0/4 | Planned    | - |
+| 4. 预订管理 | 2/4 | In Progress | 2026-03-15 |
 | 5. 数据统计 | 0/3 | Not started | - |
 | 6. 个人中心 | 0/2 | Not started | - |
 
@@ -104,9 +104,9 @@
 
 **Plans**: 4
 
-- [ ] 04-01-PLAN.md — 预订实体和Repository层实现
+- [x] 04-01-PLAN.md — 预订实体和Repository层实现 ✅ 2026-03-15
 - [ ] 04-02-PLAN.md — 预订Service层实现
-- [ ] 04-03-PLAN.md — 预订Controller层实现
+- [x] 04-03-PLAN.md — 预订Controller层实现 ✅ 2026-03-15
 - [ ] 04-04-PLAN.md — 前端集成和测试
 
 ### Phase 5: 数据统计

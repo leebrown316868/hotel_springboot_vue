@@ -2,48 +2,48 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-last_updated: "2026-03-15T07:17:51.082Z"
+status: in_progress
+last_updated: "2026-03-15T07:26:06.000Z"
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 10
-  percent: 77
+  total_plans: 19
+  completed_plans: 11
+  percent: 79
 ---
 
 # 酒店民宿管理系统 - 项目状态
 
-**Last updated:** 2026-03-14
+**Last updated:** 2026-03-15
 
 ## Project Reference
 
 **Core Value:** 能完成答辩的完整酒店管理系统
 
-**Current Focus:** Phase 3客户管理已完成
+**Current Focus:** Phase 4预订管理进行中
 
 ## Current Position
 
-**Phase:** Phase 3 - 客户管理
-**Plan:** Plan 03-03（客户数据初始化和前端集成）已完成
+**Phase:** Phase 4 - 预订管理
+**Plan:** Plan 04-03（预订Controller层）已完成
 **Status:** Completed
 
 **Progress:**
-[████████░░] 77%
+[████████░░] 79%
 Phase 1: [██████████] 100%
 Phase 2: [██████████] 100%
 Phase 3: [██████████] 100%
-Phase 4: [░░░░░░░░░░] 0%
+Phase 4: [██░░░░░░░░] 33%
 Phase 5: [░░░░░░░░░░] 0%
 Phase 6: [░░░░░░░░░░] 0%
 
-Overall: [███░░░░░░░░] 50%
+Overall: [████░░░░░░] 58%
 
 ## Performance Metrics
 
-**Requirements completed:** 11/48 (23%)
-**Plans completed:** 8/19 (42%)
-**Phases completed:** 2/6 (33%)
+**Requirements completed:** 18/48 (38%)
+**Plans completed:** 11/19 (58%)
+**Phases completed:** 3/6 (50%)
 
 ## Accumulated Context
 
@@ -63,6 +63,9 @@ Overall: [███░░░░░░░░] 50%
 | 自定义SQLiteDialect | Hibernate 5.x不支持SQLite，需自定义方言 | 2026-03-14 |
 | BCrypt密码加密 | 行业标准，安全可靠 | 2026-03-14 |
 | 无状态会话管理 | JWT不需要服务器端会话存储 | 2026-03-14 |
+| 使用hasRole进行权限控制 | 与其他Controller保持一致，使用Spring Security标准角色 | 2026-03-15 |
+| 订单编号格式BK-YYYYMMDD-序号 | 确保唯一性和可读性，方便查找和管理 | 2026-03-15 |
+| 模拟支付5%失败率 | 便于测试和展示错误处理场景 | 2026-03-15 |
 | Phase 01 P02 | 1232 | 4 tasks | 17 files |
 | Phase 01 P03 | 45 | 4 tasks | 9 files |
 | Phase 02 P01 | 60 | 5 tasks | 7 files |
@@ -71,6 +74,7 @@ Overall: [███░░░░░░░░] 50%
 | Phase 3 P02 | 300 | 5 tasks | 7 files |
 | Phase 3 P03 | 900 | 5 tasks | 10 files |
 | Phase 04 P01 | 227 | 5 tasks | 8 files |
+| Phase 04 P03 | 45 | 11 tasks | 5 files |
 
 ### Technical Stack
 
@@ -115,10 +119,20 @@ Overall: [███░░░░░░░░] 50%
 - [x] 创建前端客户API工具类
 - [x] 集成Guests.vue与真实API
 
+**Phase 4:**
+- [x] 创建Booking实体和枚举
+- [x] 创建BookingRepository
+- [x] 创建Booking DTO类
+- [x] 实现BookingService
+- [x] 实现BookingController
+- [ ] 实现预订数据初始化
+- [ ] 创建前端预订API工具类
+- [ ] 集成前端预订组件
+
 ## Session Continuity
 
-**Last action:** 完成Phase 3 Plan 03-03（客户数据初始化和前端集成）
-**Next action:** 开始执行Phase 4 Plan 04-01（预订管理基础）
+**Last action:** 完成Phase 4 Plan 04-03（预订Controller层）
+**Next action:** 开始执行Phase 4 Plan 04-04（前端集成）或继续Phase 4其他计划
 
 ### Recent Changes
 
@@ -133,6 +147,8 @@ Overall: [███░░░░░░░░] 50%
 | 2026-03-14 | Plan 03-01完成 | Guest实体、GuestStatus枚举、GuestRepository和DTO类创建，为Phase 3客户管理提供数据访问层基础 |
 | 2026-03-14 | Plan 03-02完成 | GuestService、GuestController、GuestMapper、GuestSpecification和异常处理实现，提供完整客户管理REST API |
 | 2026-03-14 | Plan 03-03完成 | 客户数据初始化、前端API工具类创建、Guests.vue集成真实API，完成Phase 3客户管理 |
+| 2026-03-15 | Plan 04-01完成 | Booking实体、BookingStatus和PaymentStatus枚举、BookingRepository和DTO类创建 |
+| 2026-03-15 | Plan 04-03完成 | BookingController实现，包含10个预订管理REST API端点，权限控制集成 |
 
 ## Project Context
 
