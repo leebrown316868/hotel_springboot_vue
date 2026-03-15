@@ -25,6 +25,19 @@ public class User {
     @Column(nullable = false, length = 100)
     private String name;
 
+    // 个人资料扩展字段
+    @Column(length = 20)
+    private String phone;
+
+    @Column(columnDefinition = "TEXT")
+    private String address;
+
+    @Column(length = 50)
+    private String nationality;
+
+    @Column(nullable = false)
+    private Boolean preferencesEnabled = true;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
@@ -39,6 +52,9 @@ public class User {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (preferencesEnabled == null) {
+            preferencesEnabled = true;
+        }
     }
 
     @PreUpdate
