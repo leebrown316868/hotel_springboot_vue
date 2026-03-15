@@ -69,8 +69,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     /**
      * 查询指定日期范围内可用的房间
      * 排除已被预订的房间（预订状态不是已取消或已退房）
+     * 只返回状态为空闲的房间
      */
     @Query("SELECT DISTINCT r FROM Room r WHERE " +
+           "r.status = 'AVAILABLE' AND " +
            "r.id NOT IN (" +
            "  SELECT b.room.id FROM Booking b WHERE " +
            "  b.checkInDate < :checkOut AND " +

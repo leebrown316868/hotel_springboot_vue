@@ -6,23 +6,25 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.validation.Valid;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Valid
 public class RoomSearchRequest {
 
     @NotNull(message = "入住日期不能为空")
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate checkInDate;
 
     @NotNull(message = "退房日期不能为空")
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate checkOutDate;
 
     @NotNull(message = "入住人数不能为空")

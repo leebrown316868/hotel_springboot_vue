@@ -22,7 +22,7 @@ export interface AuthResponse {
 }
 
 export interface ApiResponse<T = any> {
-  success: boolean
+  code: number
   message: string
-  data?: T
+  data: T
 }

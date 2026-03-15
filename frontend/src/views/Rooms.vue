@@ -34,23 +34,24 @@ const roomForm = ref<RoomRequest>({
   number: '',
   floor: '',
   type: '',
-  status: '空闲',
-  price: 0
+  status: 'AVAILABLE',
+  price: 0,
+  capacity: 1
 })
 
 const roomTypeOptions = [
-  { label: '单人间', value: '单人间' },
-  { label: '双人间', value: '双人间' },
-  { label: '套房', value: '套房' },
-  { label: '行政套房', value: '行政套房' },
-  { label: '总统套房', value: '总统套房' }
+  { label: '单人间', value: 'SINGLE' },
+  { label: '双人间', value: 'DOUBLE' },
+  { label: '套房', value: 'SUITE' },
+  { label: '行政套房', value: 'EXECUTIVE_SUITE' },
+  { label: '总统套房', value: 'PRESIDENTIAL_SUITE' }
 ]
 
 const roomStatusOptions = [
-  { label: '空闲', value: '空闲' },
-  { label: '已入住', value: '已入住' },
-  { label: '清洁中', value: '清洁中' },
-  { label: '维修中', value: '维修中' }
+  { label: '空闲', value: 'AVAILABLE' },
+  { label: '已入住', value: 'OCCUPIED' },
+  { label: '清洁中', value: 'CLEANING' },
+  { label: '维修中', value: 'MAINTENANCE' }
 ]
 
 const fetchRooms = async () => {
@@ -65,7 +66,15 @@ const fetchRooms = async () => {
     })
 
     if (response.code === 200 && response.data) {
-      rooms.value = response.data.rooms
+      // 按房间号排序（字符串排序，支持数字房间号）
+      rooms.value = response.data.rooms.sort((a, b) => {
+        const numA = parseInt(a.number)
+        const numB = parseInt(b.number)
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB
+        }
+        return a.number.localeCompare(b.number)
+      })
       total.value = response.data.total
       totalPages.value = response.data.totalPages
     }
@@ -90,8 +99,9 @@ const handleCreate = () => {
     number: '',
     floor: '',
     type: '',
-    status: '空闲',
-    price: 0
+    status: 'AVAILABLE',
+    price: 0,
+    capacity: 1
   }
   dialogVisible.value = true
 }
@@ -104,7 +114,8 @@ const handleEdit = (row: RoomResponse) => {
     floor: row.floor,
     type: row.type,
     status: row.status,
-    price: row.price
+    price: row.price,
+    capacity: row.capacity
   }
   dialogVisible.value = true
 }
@@ -197,11 +208,32 @@ const submitForm = async () => {
 const getStatusClass = (status: string) => {
   const base = 'px-3 py-1 font-medium rounded-full '
   switch(status) {
-    case '空闲': return base + 'bg-green-50 text-green-600 border border-green-200'
-    case '已入住': return base + 'bg-red-50 text-red-600 border border-red-200'
-    case '清洁中': return base + 'bg-yellow-50 text-yellow-600 border border-yellow-200'
-    case '维修中': return base + 'bg-orange-50 text-orange-600 border border-orange-200'
+    case 'AVAILABLE': return base + 'bg-green-50 text-green-600 border border-green-200'
+    case 'OCCUPIED': return base + 'bg-red-50 text-red-600 border border-red-200'
+    case 'CLEANING': return base + 'bg-yellow-50 text-yellow-600 border border-yellow-200'
+    case 'MAINTENANCE': return base + 'bg-orange-50 text-orange-600 border border-orange-200'
     default: return base + 'bg-gray-100 text-gray-600 border border-gray-200'
+  }
+}
+
+const getStatusLabel = (status: string) => {
+  switch(status) {
+    case 'AVAILABLE': return '空闲'
+    case 'OCCUPIED': return '已入住'
+    case 'CLEANING': return '清洁中'
+    case 'MAINTENANCE': return '维修中'
+    default: return status
+  }
+}
+
+const getTypeLabel = (type: string) => {
+  switch(type) {
+    case 'SINGLE': return '单人间'
+    case 'DOUBLE': return '双人间'
+    case 'SUITE': return '套房'
+    case 'EXECUTIVE_SUITE': return '行政套房'
+    case 'PRESIDENTIAL_SUITE': return '总统套房'
+    default: return type
   }
 }
 
@@ -256,10 +288,10 @@ onMounted(() => {
           <div class="flex flex-col gap-1">
             <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">状态</label>
             <el-select v-model="filterStatus" placeholder="所有状态" clearable class="w-full" @change="currentPage = 1; fetchRooms()">
-              <el-option label="空闲" value="空闲" />
-              <el-option label="已入住" value="已入住" />
-              <el-option label="清洁中" value="清洁中" />
-              <el-option label="维修中" value="维修中" />
+              <el-option label="空闲" value="AVAILABLE" />
+              <el-option label="已入住" value="OCCUPIED" />
+              <el-option label="清洁中" value="CLEANING" />
+              <el-option label="维修中" value="MAINTENANCE" />
             </el-select>
           </div>
 
@@ -283,7 +315,7 @@ onMounted(() => {
           </el-table-column>
           <el-table-column prop="type" label="房型">
             <template #default="scope">
-              <span class="text-gray-600">{{ scope.row.type }}</span>
+              <span class="text-gray-600">{{ getTypeLabel(scope.row.type) }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="status" label="状态" width="150">
@@ -351,6 +383,9 @@ onMounted(() => {
           <el-form-item label="价格" required>
             <el-input-number v-model="roomForm.price" :min="0" :precision="2" class="w-full" />
           </el-form-item>
+          <el-form-item label="容量" required>
+            <el-input-number v-model="roomForm.capacity" :min="1" :max="10" class="w-full" />
+          </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="dialogVisible = false">取消</el-button>
@@ -375,15 +410,19 @@ onMounted(() => {
           </div>
           <div class="flex justify-between items-center py-2 border-b">
             <span class="text-gray-500">房型</span>
-            <span class="font-semibold">{{ currentRoom.type }}</span>
+            <span class="font-semibold">{{ getTypeLabel(currentRoom.type) }}</span>
           </div>
           <div class="flex justify-between items-center py-2 border-b">
             <span class="text-gray-500">状态</span>
-            <span :class="getStatusClass(currentRoom.status)">{{ currentRoom.status }}</span>
+            <span :class="getStatusClass(currentRoom.status)">{{ getStatusLabel(currentRoom.status) }}</span>
           </div>
           <div class="flex justify-between items-center py-2 border-b">
             <span class="text-gray-500">价格</span>
             <span class="font-semibold text-blue-600">¥{{ currentRoom.price }}</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b">
+            <span class="text-gray-500">容量</span>
+            <span class="font-semibold">{{ currentRoom.capacity }} 人</span>
           </div>
           <div class="flex justify-between items-center py-2 border-b">
             <span class="text-gray-500">创建时间</span>

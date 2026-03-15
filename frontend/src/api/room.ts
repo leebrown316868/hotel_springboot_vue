@@ -10,21 +10,21 @@ import type {
 export const getRooms = async (
   params: RoomQueryParams
 ): Promise<ApiResponse<RoomListResponse>> => {
-  const response = await api.get<ApiResponse<RoomListResponse>>('/rooms', { params })
+  const response = await api.get<ApiResponse<RoomListResponse>>('/api/rooms', { params })
   return response.data
 }
 
 export const getRoomById = async (
   id: number
 ): Promise<ApiResponse<RoomResponse>> => {
-  const response = await api.get<ApiResponse<RoomResponse>>(`/rooms/${id}`)
+  const response = await api.get<ApiResponse<RoomResponse>>(`/api/rooms/${id}`)
   return response.data
 }
 
 export const createRoom = async (
   data: RoomRequest
 ): Promise<ApiResponse<RoomResponse>> => {
-  const response = await api.post<ApiResponse<RoomResponse>>('/rooms', data)
+  const response = await api.post<ApiResponse<RoomResponse>>('/api/rooms', data)
   return response.data
 }
 
@@ -32,14 +32,14 @@ export const updateRoom = async (
   id: number,
   data: RoomRequest
 ): Promise<ApiResponse<RoomResponse>> => {
-  const response = await api.put<ApiResponse<RoomResponse>>(`/rooms/${id}`, data)
+  const response = await api.put<ApiResponse<RoomResponse>>(`/api/rooms/${id}`, data)
   return response.data
 }
 
 export const deleteRoom = async (
   id: number
 ): Promise<ApiResponse<string>> => {
-  const response = await api.delete<ApiResponse<string>>(`/rooms/${id}`)
+  const response = await api.delete<ApiResponse<string>>(`/api/rooms/${id}`)
   return response.data
 }
 
@@ -47,6 +47,6 @@ export const updateRoomStatus = async (
   id: number,
   status: string
 ): Promise<ApiResponse<RoomResponse>> => {
-  const response = await api.patch<ApiResponse<RoomResponse>>(`/rooms/${id}/status`, { status })
+  const response = await api.patch<ApiResponse<RoomResponse>>(`/api/rooms/${id}/status`, { status })
   return response.data
 }

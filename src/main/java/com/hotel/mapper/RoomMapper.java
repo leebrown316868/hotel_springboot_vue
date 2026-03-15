@@ -23,6 +23,7 @@ public class RoomMapper {
                 .type(room.getType() != null ? room.getType().getDisplayName() : null)
                 .status(room.getStatus() != null ? room.getStatus().getDisplayName() : null)
                 .price(room.getPrice())
+                .capacity(room.getCapacity())
                 .createdAt(room.getCreatedAt())
                 .updatedAt(room.getUpdatedAt())
                 .build();
@@ -35,6 +36,7 @@ public class RoomMapper {
                 .type(parseRoomType(request.getType()))
                 .status(parseRoomStatus(request.getStatus()))
                 .price(request.getPrice())
+                .capacity(request.getCapacity())
                 .build();
     }
 

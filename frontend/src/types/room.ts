@@ -15,6 +15,7 @@ export interface RoomRequest {
   type: string
   status: string
   price: number
+  capacity: number
 }
 
 export interface RoomResponse {
@@ -24,6 +25,7 @@ export interface RoomResponse {
   type: string
   status: string
   price: number
+  capacity: number
   createdAt: string
   updatedAt: string
 }

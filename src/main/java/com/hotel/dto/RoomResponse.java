@@ -20,6 +20,7 @@ public class RoomResponse {
     private String type;
     private String status;
     private BigDecimal price;
+    private Integer capacity;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

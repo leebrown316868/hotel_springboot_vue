@@ -29,7 +29,7 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public RoomListResponse getRooms(int page, int size, String number, String floor, String status) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("number").ascending());
         Page<Room> rooms = roomRepository.findAll(
                 RoomSpecification.withFilters(number, floor, status),
                 pageable

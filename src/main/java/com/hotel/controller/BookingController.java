@@ -20,9 +20,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.beans.PropertyEditorSupport;
+import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -34,6 +37,16 @@ public class BookingController {
 
     private final BookingService bookingService;
     private final JwtUtil jwtUtil;
+
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        binder.registerCustomEditor(LocalDate.class, new PropertyEditorSupport() {
+            @Override
+            public void setAsText(String text) throws IllegalArgumentException {
+                setValue(LocalDate.parse(text));
+            }
+        });
+    }
 
     @GetMapping("/available-rooms")
     public ResponseEntity<ApiResponse<List<RoomResponse>>> searchAvailableRooms(@Valid RoomSearchRequest request) {

@@ -2,7 +2,7 @@ import api from './api'
 import type { AuthRequest, AuthResponse, RegisterRequest, User } from '../types/auth'
 
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
-  const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', { email, password })
+  const response = await api.post<ApiResponse<AuthResponse>>('/api/auth/login', { email, password })
   const { token, user } = response.data.data
 
   // Store token and user info
@@ -13,7 +13,7 @@ export const login = async (email: string, password: string): Promise<AuthRespon
 }
 
 export const register = async (email: string, password: string, name: string): Promise<AuthResponse> => {
-  const response = await api.post<ApiResponse<AuthResponse>>('/auth/register', { email, password, name })
+  const response = await api.post<ApiResponse<AuthResponse>>('/api/auth/register', { email, password, name })
   const { token, user } = response.data.data
 
   // Store token and user info
@@ -25,7 +25,7 @@ export const register = async (email: string, password: string, name: string): P
 
 export const logout = async (): Promise<void> => {
   try {
-    await api.post('/auth/logout')
+    await api.post('/api/auth/logout')
   } finally {
     // Always clear local storage
     localStorage.removeItem('token')
@@ -34,7 +34,7 @@ export const logout = async (): Promise<void> => {
 }
 
 export const getCurrentUser = async (): Promise<User> => {
-  const response = await api.get<ApiResponse<User>>('/auth/me')
+  const response = await api.get<ApiResponse<User>>('/api/auth/me')
   return response.data.data
 }
 

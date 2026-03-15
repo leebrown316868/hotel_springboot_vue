@@ -1,0 +1,47 @@
+# 依赖与构建产物 (最容易导致索引卡死的重灾区)
+node_modules/
+dist/
+build/
+bin/
+obj/
+vendor/
+.venv/
+venv/
+__pycache__/
+
+# IDE 与工具配置
+.vscode/
+.idea/
+.vs/
+.history/
+.pnpm-store/
+
+# 版本控制
+.git/
+.svn/
+.hg/
+
+# 巨大的日志与临时文件 (Herding 阶段最怕扫描到这些)
+*.log
+*.tmp
+*.bak
+*.swp
+tmp/
+logs/
+
+# 多媒体与二进制 (AI 无法读取，只会增加索引负担)
+*.exe
+*.dll
+*.so
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.pdf
+*.zip
+*.tar.gz
+*.7z
+
+# Claude Code 自身的缓存
+.claude/

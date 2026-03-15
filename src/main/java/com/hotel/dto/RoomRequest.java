@@ -33,4 +33,8 @@ public class RoomRequest {
     @NotNull(message = "价格不能为空")
     @Positive(message = "价格必须大于0")
     private BigDecimal price;
+
+    @NotNull(message = "容量不能为空")
+    @Positive(message = "容量必须大于0")
+    private Integer capacity;
 }
