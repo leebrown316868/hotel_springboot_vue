@@ -1,37 +1,35 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getMyCompletedBookings, createReview } from '@/api/review'
+import type { BookingReviewResponse } from '@/types/review'
 import Layout from '../components/Layout.vue'
 import { ElMessage } from 'element-plus'
 
-const history = ref([
-  {
-    id: 'BK-20230910-042',
-    roomType: '标准间',
-    checkIn: '2023-09-10',
-    checkOut: '2023-09-12',
-    reviewed: false,
-    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&q=80&w=400'
-  },
-  {
-    id: 'BK-20221205-011',
-    roomType: '豪华海景房',
-    checkIn: '2022-12-05',
-    checkOut: '2022-12-08',
-    reviewed: true,
-    rating: 5,
-    comment: '非常棒的体验，海景无敌，服务也很周到！',
-    image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&q=80&w=400'
-  }
-])
-
+const loading = ref(false)
+const history = ref<BookingReviewResponse[]>([])
 const reviewDialogVisible = ref(false)
+const submittingReview = ref(false)
 const currentReview = ref({
-  bookingId: '',
+  bookingId: 0,
   rating: 5,
   comment: ''
 })
 
-const openReviewDialog = (booking: any) => {
+const loadCompletedBookings = async () => {
+  loading.value = true
+  try {
+    const response = await getMyCompletedBookings()
+    if (response.data.code === 200 && response.data.data) {
+      history.value = response.data.data
+    }
+  } catch (error) {
+    ElMessage.error('加载历史订单失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const openReviewDialog = (booking: BookingReviewResponse) => {
   currentReview.value = {
     bookingId: booking.id,
     rating: 5,
@@ -40,16 +38,63 @@ const openReviewDialog = (booking: any) => {
   reviewDialogVisible.value = true
 }
 
-const submitReview = () => {
-  const booking = history.value.find(b => b.id === currentReview.value.bookingId)
-  if (booking) {
-    booking.reviewed = true
-    booking.rating = currentReview.value.rating
-    booking.comment = currentReview.value.comment
+const submitReview = async () => {
+  if (!currentReview.value.comment.trim()) {
+    ElMessage.warning('请输入评价内容')
+    return
   }
-  reviewDialogVisible.value = false
-  ElMessage.success('感谢您的评价！')
+
+  submittingReview.value = true
+  try {
+    const response = await createReview({
+      bookingId: currentReview.value.bookingId,
+      rating: currentReview.value.rating,
+      comment: currentReview.value.comment
+    })
+
+    if (response.data.code === 201) {
+      ElMessage.success('感谢您的评价！')
+      reviewDialogVisible.value = false
+      // 重新加载订单列表
+      loadCompletedBookings()
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '提交评价失败')
+  } finally {
+    submittingReview.value = false
+  }
 }
+
+const getRoomTypeName = (type: string) => {
+  const names: Record<string, string> = {
+    'SINGLE': '标准间',
+    'DOUBLE': '豪华间',
+    'SUITE': '套房',
+    'DELUXE': '总统套房',
+    'EXECUTIVE': '行政套房'
+  }
+  return names[type] || type
+}
+
+const getRoomImage = (roomType: string) => {
+  const images: Record<string, string> = {
+    'SINGLE': 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&q=80&w=400',
+    'DOUBLE': 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&q=80&w=400',
+    'SUITE': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&q=80&w=400',
+    'DELUXE': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&q=80&w=400',
+    'EXECUTIVE': 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&q=80&w=400'
+  }
+  return images[roomType] || images['SINGLE']
+}
+
+const formatDate = (dateStr: string) => {
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+onMounted(() => {
+  loadCompletedBookings()
+})
 </script>
 
 <template>
@@ -59,18 +104,26 @@ const submitReview = () => {
         <h1 class="text-2xl font-bold text-gray-900">历史记录与评价反馈</h1>
         <p class="text-sm text-gray-500 mt-1">查看您的入住历史并留下宝贵评价</p>
       </header>
-      
-      <div class="space-y-6">
+
+      <div v-if="loading" class="flex justify-center items-center py-12">
+        <el-icon class="is-loading text-4xl text-blue-600"><Loading /></el-icon>
+      </div>
+
+      <div v-else-if="history.length === 0" class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+        <p class="text-gray-500">暂无已完成订单</p>
+      </div>
+
+      <div v-else class="space-y-6">
         <div v-for="booking in history" :key="booking.id" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div class="flex flex-col sm:flex-row gap-6">
-            <img :src="booking.image" class="w-full sm:w-32 h-32 object-cover rounded-lg" />
+            <img :src="getRoomImage(booking.roomType)" class="w-full sm:w-32 h-32 object-cover rounded-lg" />
             <div class="flex-1">
               <div class="flex justify-between items-start mb-2">
-                <h3 class="text-lg font-bold text-gray-900">{{ booking.roomType }}</h3>
-                <span class="text-sm text-gray-500">{{ booking.checkIn }} 至 {{ booking.checkOut }}</span>
+                <h3 class="text-lg font-bold text-gray-900">{{ getRoomTypeName(booking.roomType) }}</h3>
+                <span class="text-sm text-gray-500">{{ formatDate(booking.checkInDate) }} 至 {{ formatDate(booking.checkOutDate) }}</span>
               </div>
-              <p class="text-xs text-gray-500 mb-4">订单号: {{ booking.id }}</p>
-              
+              <p class="text-xs text-gray-500 mb-4">订单号: {{ booking.bookingNumber }}</p>
+
               <div v-if="booking.reviewed" class="bg-gray-50 p-4 rounded-lg">
                 <div class="flex items-center gap-2 mb-2">
                   <span class="text-sm font-semibold text-gray-700">您的评价：</span>
@@ -106,7 +159,7 @@ const submitReview = () => {
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="reviewDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitReview">提交评价</el-button>
+          <el-button type="primary" :loading="submittingReview" @click="submitReview">提交评价</el-button>
         </span>
       </template>
     </el-dialog>
