@@ -15,13 +15,21 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const form = ref<ChangePasswordRequest>({
+const form = ref<ChangePasswordRequest & { confirmPassword?: string }>({
   oldPassword: '',
-  newPassword: ''
+  newPassword: '',
+  confirmPassword: ''
 })
 
-const confirmPassword = ref('')
 const loading = ref(false)
+
+const validateConfirmPassword = (rule: any, value: string, callback: any) => {
+  if (value !== form.value.newPassword) {
+    callback(new Error('两次输入的密码不一致'))
+  } else {
+    callback()
+  }
+}
 
 const rules = {
   oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
@@ -31,15 +39,7 @@ const rules = {
   ],
   confirmPassword: [
     { required: true, message: '请确认新密码', trigger: 'blur' },
-    {
-      validator: (rule: any, value: string) => {
-        if (value !== form.value.newPassword) {
-          return Promise.reject(new Error('两次输入的密码不一致'))
-        }
-        return Promise.resolve()
-      },
-      trigger: 'blur'
-    }
+    { validator: validateConfirmPassword, trigger: 'blur' }
   ]
 }
 
@@ -53,9 +53,9 @@ const handleClose = () => {
 const resetForm = () => {
   form.value = {
     oldPassword: '',
-    newPassword: ''
+    newPassword: '',
+    confirmPassword: ''
   }
-  confirmPassword.value = ''
   formRef.value?.clearValidate()
 }
 
@@ -65,7 +65,8 @@ const handleSubmit = async () => {
     if (!valid) return
 
     loading.value = true
-    await changePassword(form.value)
+    const { confirmPassword, ...passwordData } = form.value
+    await changePassword(passwordData as ChangePasswordRequest)
     ElMessage.success('密码修改成功')
     handleClose()
   } catch (error: any) {
@@ -113,7 +114,7 @@ const handleSubmit = async () => {
 
       <el-form-item label="确认密码" prop="confirmPassword">
         <el-input
-          v-model="confirmPassword"
+          v-model="form.confirmPassword"
           type="password"
           placeholder="请再次输入新密码"
           show-password

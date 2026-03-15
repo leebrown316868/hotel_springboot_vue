@@ -88,16 +88,16 @@ const router = createRouter({
 })
 
 // Navigation guard for authentication
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   const requiresAuth = to.meta.requiresAuth
 
   if (requiresAuth && !isAuthenticated()) {
-    next({ name: 'login' })
-  } else if (to.path === '/login' && isAuthenticated()) {
-    next({ name: 'dashboard' })
-  } else {
-    next()
+    return { name: 'login' }
   }
+  if (to.path === '/login' && isAuthenticated()) {
+    return { name: 'dashboard' }
+  }
+  // 不返回任何值 = 允许导航通过
 })
 
 export default router
