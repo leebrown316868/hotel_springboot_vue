@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "notifications", indexes = {
-    @Index(name = "idx_user_unread", columnList = "userId, isRead"),
-    @Index(name = "idx_user_created", columnList = "userId, createdAt")
+    @Index(name = "idx_user_unread", columnList = "user_id, is_read"),
+    @Index(name = "idx_user_created", columnList = "user_id, created_at")
 })
 public class Notification {
 
@@ -31,7 +31,7 @@ public class Notification {
     @Column(nullable = false, length = 50)
     private NotificationType type;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "is_read")
     private Boolean isRead = false;
 
     @Column(nullable = false)
@@ -41,10 +41,10 @@ public class Notification {
     private String actionLink;
 
     @CreationTimestamp
-    @Column(nullable = false)
+    @Column(nullable = false, name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column
+    @Column(name = "read_at")
     private LocalDateTime readAt;
 
     @PrePersist
