@@ -13,7 +13,7 @@
 | 3. 客户管理 | 3/3 | Complete   | 2026-03-14 |
 | 4. 预订管理 | 4/4 | Complete   | 2026-03-15 |
 | 5. 数据统计 | 2/2 | Complete   | 2026-03-15 |
-| 6. 个人中心 | 0/2 | Not started | - |
+| 6. 个人中心 | 0/3 | Not started | - |
 
 ## Phases
 
@@ -144,10 +144,11 @@
 3. 客户可以查看历史订单
 4. 客户可以对已完成订单进行评价反馈
 
-**Plans**: 2
+**Plans**: 3
 
-- [ ] 06-01-PLAN.md — 个人资料和评价后端API实现（User扩展、Review实体、ProfileController、ReviewController）
-- [ ] 06-02-PLAN.md — 个人中心前端集成（Profile.vue、HistoryFeedback.vue与API集成）
+- [ ] 06-01-PLAN.md — 个人资料和评价数据模型实现（User扩展、Review实体、DTO、Repository、Schema）
+- [ ] 06-02-PLAN.md — 个人资料和评价服务层实现（ProfileService、ReviewService、Controller、Mapper）
+- [ ] 06-03-PLAN.md — 个人中心前端集成（API工具、类型定义、Profile.vue、HistoryFeedback.vue、路由配置）
 
 ## Requirements Coverage
 
@@ -188,4 +189,4 @@ Phase 1 (基础+认证)
 
 ---
 *Roadmap created: 2026-03-14*
-*Last updated: 2026-03-15 - Phase 6 plans created*
+*Last updated: 2026-03-15 - Phase 6 plans revised (split into 3 plans)*

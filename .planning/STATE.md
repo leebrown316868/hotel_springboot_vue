@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 5完成，实现统计数据API和仪表板前端集成
-last_updated: "2026-03-15T09:20:00.000Z"
+status: planning
+last_updated: "2026-03-15T11:17:08.242Z"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_plans: 18
+  completed_plans: 16
+  percent: 89
 ---
 
 # 酒店民宿管理系统 - 项目状态
@@ -26,10 +26,10 @@ progress:
 
 **Phase:** Phase 5 - 数据统计（已完成）
 **Previous:** Phase 4 - 预订管理（已完成）
-**Status:** Phase 5完成，实现统计数据API和仪表板前端集成
+**Status:** Ready to plan
 
 **Progress:**
-[██████████] 100%
+[█████████░] 89%
 Phase 1: [██████████] 100%
 Phase 2: [██████████] 100%
 Phase 3: [██████████] 100%
@@ -78,6 +78,7 @@ Overall: [████████░] 83%
 | Phase 05 P01 | 540 | 3 tasks | 9 files |
 | Phase 05-data-statistics P01 | 540 | 3 tasks | 9 files |
 | Phase 05-data-statistics P02 | PT5M | 2 tasks | 3 files |
+| Phase 06-profile P01 | 180 | 3 tasks | 10 files |
 
 ### Technical Stack
 
