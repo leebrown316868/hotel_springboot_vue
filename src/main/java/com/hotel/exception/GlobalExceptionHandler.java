@@ -51,6 +51,24 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    @ExceptionHandler(org.springframework.validation.BindException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleBindException(org.springframework.validation.BindException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.<Map<String, String>>builder()
+                        .code(HttpStatus.BAD_REQUEST.value())
+                        .message("Validation failed")
+                        .data(errors)
+                        .build());
+    }
+
     @ExceptionHandler(RoomNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleRoomNotFoundException(RoomNotFoundException ex) {
         log.error("Room not found exception: {}", ex.getMessage());
@@ -134,6 +152,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ReviewAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleReviewAlreadyExistsException(ReviewAlreadyExistsException ex) {
         log.error("Review already exists exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(SettingsNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSettingsNotFoundException(SettingsNotFoundException ex) {
+        log.error("Settings not found exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        log.error("Illegal argument exception: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
