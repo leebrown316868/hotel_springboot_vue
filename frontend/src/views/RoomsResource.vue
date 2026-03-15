@@ -1,97 +1,167 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import Layout from '../components/Layout.vue'
+import { settingsApi } from '../api/settings'
+import { getRooms } from '../api/room'
+import type { RoomTypeConfig, RoomTypeWithStats } from '../types/settings'
+import type { RoomResponse } from '../types/room'
+import { getUser } from '@/utils/auth'
 
 const activeTab = ref('types')
+const loading = ref(false)
+const roomTypesWithStats = ref<RoomTypeWithStats[]>([])
+const rooms = ref<RoomResponse[]>([])
+const editDialogVisible = ref(false)
+const editingRoomType = ref<{ code: string } & RoomTypeConfig | null>(null)
 
-const roomTypes = ref([
-  { id: 1, name: '标准间', capacity: 2, basePrice: '¥150', count: 20 },
-  { id: 2, name: '豪华海景房', capacity: 2, basePrice: '¥220', count: 15 },
-  { id: 3, name: '行政商务套房', capacity: 2, basePrice: '¥350', count: 10 },
-  { id: 4, name: '总统套房', capacity: 4, basePrice: '¥850', count: 2 },
-])
+const searchQuery = ref('')
+const filterFloor = ref('')
+const filterType = ref('')
+const filterStatus = ref('')
 
-const roomInventory = ref([
-  { id: '101', type: '标准间', floor: 1, status: 'AVAILABLE' },
-  { id: '102', type: '标准间', floor: 1, status: 'OCCUPIED' },
-  { id: '201', type: '豪华海景房', floor: 2, status: 'CLEANING' },
-  { id: '305', type: '行政商务套房', floor: 3, status: 'MAINTENANCE' },
-  { id: '401', type: '总统套房', floor: 4, status: 'AVAILABLE' },
-])
+const isAdmin = computed(() => getUser()?.role === 'ADMIN')
 
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    'AVAILABLE': 'success',
-    'OCCUPIED': 'danger',
-    'CLEANING': 'warning',
-    'MAINTENANCE': 'info',
-  }
-  return map[status] || 'info'
+const roomTypeCodeNames: Record<string, string> = {
+  SINGLE: '单人间', DOUBLE: '双人间', SUITE: '套房',
+  EXECUTIVE_SUITE: '行政套房', PRESIDENTIAL_SUITE: '总统套房'
 }
 
-const getStatusLabel = (status: string) => {
-  const map: Record<string, string> = {
-    'AVAILABLE': '空闲可用',
-    'OCCUPIED': '已入住',
-    'CLEANING': '清洁中',
-    'MAINTENANCE': '维护中',
+const fetchRoomTypesConfig = async () => {
+  loading.value = true
+  try {
+    const config = await settingsApi.getRoomTypesConfig()
+    const typesWithStats: RoomTypeWithStats[] = []
+    for (const [code, typeConfig] of Object.entries(config)) {
+      try {
+        const stats = await settingsApi.getRoomTypeStats(code)
+        typesWithStats.push({ code, ...typeConfig, roomCount: stats.roomCount, availableCount: stats.availableCount })
+      } catch {
+        typesWithStats.push({ code, ...typeConfig, roomCount: 0, availableCount: 0 })
+      }
+    }
+    roomTypesWithStats.value = typesWithStats
+  } catch {
+    ElMessage.error('加载房型配置失败')
+  } finally {
+    loading.value = false
   }
-  return map[status] || status
 }
+
+const handleEditRoomType = (code: string) => {
+  const config = roomTypesWithStats.value.find(t => t.code === code)
+  if (config) {
+    editingRoomType.value = { code: config.code, name: config.name, capacity: config.capacity, basePrice: config.basePrice }
+    editDialogVisible.value = true
+  }
+}
+
+const handleSaveRoomType = async () => {
+  if (!editingRoomType.value) return
+  loading.value = true
+  try {
+    const { code, ...config } = editingRoomType.value
+    const allConfig = Object.fromEntries(roomTypesWithStats.value.map(t => [t.code, { name: t.name, capacity: t.capacity, basePrice: t.basePrice }]))
+    allConfig[code] = config
+    await settingsApi.updateRoomTypesConfig(allConfig)
+    ElMessage.success('更新成功')
+    editDialogVisible.value = false
+    await fetchRoomTypesConfig()
+  } catch {
+    ElMessage.error('更新失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const fetchRooms = async () => {
+  loading.value = true
+  try {
+    const response = await getRooms({ page: 0, size: 100, number: searchQuery.value || undefined, floor: filterFloor.value || undefined, status: filterStatus.value || undefined })
+    if (response.code === 200) {
+      rooms.value = response.data.rooms.filter(r => !filterType.value || r.type === filterType.value).sort((a, b) => parseInt(a.number) - parseInt(b.number))
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+const resetFilters = () => { searchQuery.value = ''; filterFloor.value = ''; filterType.value = ''; filterStatus.value = ''; fetchRooms() }
+
+const getStatusType = (s: string) => ({ AVAILABLE: 'success', OCCUPIED: 'danger', CLEANING: 'warning', MAINTENANCE: 'info' }[s] || 'info')
+const getStatusLabel = (s: string) => ({ AVAILABLE: '空闲', OCCUPIED: '已入住', CLEANING: '清洁中', MAINTENANCE: '维护中' }[s] || s)
+const getTypeLabel = (t: string) => roomTypeCodeNames[t] || t
+
+onMounted(() => { fetchRoomTypesConfig(); fetchRooms() })
 </script>
 
 <template>
   <Layout>
-    <div class="max-w-7xl mx-auto">
-      <header class="mb-8 flex justify-between items-end">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">客房资源管理</h1>
-          <p class="text-sm text-gray-500 mt-1">管理房型配置、客房详细信息及维护记录</p>
-        </div>
-        <el-button type="primary" icon="Plus">新增资源</el-button>
-      </header>
-      
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <el-tabs v-model="activeTab" class="px-6 pt-4">
-          <el-tab-pane label="房型配置" name="types">
-            <el-table :data="roomTypes" style="width: 100%" class="mt-4 mb-6">
-              <el-table-column prop="name" label="房型名称" />
-              <el-table-column prop="capacity" label="容纳人数" />
-              <el-table-column prop="basePrice" label="基础价格" />
-              <el-table-column prop="count" label="房间数量" />
-              <el-table-column label="操作" width="150">
-                <template #default>
-                  <el-button size="small" text type="primary">编辑</el-button>
-                  <el-button size="small" text type="danger">删除</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </el-tab-pane>
-          <el-tab-pane label="客房列表" name="inventory">
-            <div class="flex gap-4 mb-4 mt-2">
-              <el-input placeholder="搜索房间号..." prefix-icon="Search" class="w-64" />
-              <el-select placeholder="房型" clearable class="w-48">
-                <el-option v-for="type in roomTypes" :key="type.id" :label="type.name" :value="type.name" />
-              </el-select>
-            </div>
-            <el-table :data="roomInventory" style="width: 100%" class="mb-6">
-              <el-table-column prop="id" label="房间号" />
-              <el-table-column prop="type" label="房型" />
-              <el-table-column prop="floor" label="楼层" />
-              <el-table-column label="状态">
-                <template #default="{ row }">
-                  <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="150">
-                <template #default>
-                  <el-button size="small" text type="primary">设置状态</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </el-tab-pane>
-        </el-tabs>
-      </div>
+    <div class="max-w-7xl mx-auto p-6">
+      <h1 class="text-2xl font-bold mb-6">客房资源管理</h1>
+      <el-tabs v-model="activeTab">
+        <el-tab-pane label="房型配置" name="types">
+          <el-table :data="roomTypesWithStats" v-loading="loading">
+            <el-table-column prop="code" label="代码" width="180" />
+            <el-table-column prop="name" label="名称" />
+            <el-table-column prop="capacity" label="容量" width="100">
+              <template #default="{ row }">{{ row.capacity }} 人</template>
+            </el-table-column>
+            <el-table-column prop="basePrice" label="价格" width="120">
+              <template #default="{ row }">¥{{ row.basePrice }}</template>
+            </el-table-column>
+            <el-table-column label="房间数" width="120">
+              <template #default="{ row }">{{ row.availableCount }}/{{ row.roomCount }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="100">
+              <template #default="{ row }">
+                <el-button size="small" :disabled="!isAdmin" @click="handleEditRoomType(row.code)">编辑</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+        <el-tab-pane label="客房列表" name="inventory">
+          <div class="flex gap-2 mb-4">
+            <el-input v-model="searchQuery" placeholder="搜索房间号" clearable @input="fetchRooms" style="width: 200px" />
+            <el-select v-model="filterFloor" placeholder="楼层" clearable @change="fetchRooms" style="width: 120px">
+              <el-option label="1楼" value="1" /><el-option label="2楼" value="2" /><el-option label="3楼" value="3" /><el-option label="4楼" value="4" /><el-option label="5楼" value="5" />
+            </el-select>
+            <el-select v-model="filterType" placeholder="房型" clearable @change="fetchRooms" style="width: 140px">
+              <el-option label="单人间" value="SINGLE" /><el-option label="双人间" value="DOUBLE" /><el-option label="套房" value="SUITE" /><el-option label="行政套房" value="EXECUTIVE_SUITE" /><el-option label="总统套房" value="PRESIDENTIAL_SUITE" />
+            </el-select>
+            <el-select v-model="filterStatus" placeholder="状态" clearable @change="fetchRooms" style="width: 120px">
+              <el-option label="空闲" value="AVAILABLE" /><el-option label="已入住" value="OCCUPIED" /><el-option label="清洁中" value="CLEANING" /><el-option label="维护中" value="MAINTENANCE" />
+            </el-select>
+            <el-button @click="resetFilters">重置</el-button>
+          </div>
+          <el-table :data="rooms" v-loading="loading">
+            <el-table-column prop="number" label="房间号" width="100" />
+            <el-table-column prop="type" label="房型" width="120">
+              <template #default="{ row }">{{ getTypeLabel(row.type) }}</template>
+            </el-table-column>
+            <el-table-column prop="floor" label="楼层" width="80">
+              <template #default="{ row }">{{ row.floor }}楼</template>
+            </el-table-column>
+            <el-table-column prop="price" label="价格" width="100">
+              <template #default="{ row }">¥{{ row.price }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="120">
+              <template #default="{ row }">
+                <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
     </div>
+    <el-dialog v-model="editDialogVisible" title="编辑房型" width="400px">
+      <el-form v-if="editingRoomType" label-width="100px">
+        <el-form-item label="代码"><el-input v-model="editingRoomType.code" disabled /></el-form-item>
+        <el-form-item label="名称"><el-input v-model="editingRoomType.name" /></el-form-item>
+        <el-form-item label="容量"><el-input-number v-model="editingRoomType.capacity" :min="1" :max="10" /></el-form-item>
+        <el-form-item label="价格"><el-input-number v-model="editingRoomType.basePrice" :min="0" :max="10000" /></el-form-item>
+      </el-form>
+      <template #footer><el-button @click="editDialogVisible = false">取消</el-button><el-button type="primary" :loading="loading" @click="handleSaveRoomType">确定</el-button></template>
+    </el-dialog>
   </Layout>
 </template>
