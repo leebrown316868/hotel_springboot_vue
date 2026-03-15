@@ -1,8 +1,10 @@
 package com.hotel.service;
 
 import com.hotel.dto.RoomListResponse;
+import com.hotel.dto.RemoteRequest;
 import com.hotel.dto.RoomRequest;
 import com.hotel.dto.RoomResponse;
+import com.hotel.dto.RoomTypeStats;
 
 public interface RoomService {
 
@@ -17,4 +19,6 @@ public interface RoomService {
     void deleteRoom(Long id);
 
     RoomResponse updateRoomStatus(Long id, String status);
+
+    RoomTypeStats getRoomTypeStats(String roomType);
 }

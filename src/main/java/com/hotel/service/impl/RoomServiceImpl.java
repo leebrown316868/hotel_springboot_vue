@@ -3,6 +3,7 @@ package com.hotel.service.impl;
 import com.hotel.dto.RoomListResponse;
 import com.hotel.dto.RoomRequest;
 import com.hotel.dto.RoomResponse;
+import com.hotel.dto.RoomTypeStats;
 import com.hotel.entity.Room;
 import com.hotel.entity.RoomStatus;
 import com.hotel.exception.InvalidRoomStatusException;
@@ -19,6 +20,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -109,6 +112,19 @@ public class RoomServiceImpl implements RoomService {
         room.setStatus(newStatus);
         room = roomRepository.save(room);
         return roomMapper.toResponse(room);
+    }
+
+    @Override
+    public RoomTypeStats getRoomTypeStats(String roomType) {
+        List<Room> rooms = roomRepository.findByType(roomType);
+        RoomTypeStats stats = new RoomTypeStats();
+        stats.setCode(roomType);
+        stats.setRoomCount(rooms.size());
+        stats.setAvailableCount((int) rooms.stream().filter(r -> r.getStatus() == RoomStatus.AVAILABLE).count());
+        stats.setOccupiedCount((int) rooms.stream().filter(r -> r.getStatus() == RoomStatus.OCCUPIED).count());
+        stats.setCleaningCount((int) rooms.stream().filter(r -> r.getStatus() == RoomStatus.CLEANING).count());
+        stats.setMaintenanceCount((int) rooms.stream().filter(r -> r.getStatus() == RoomStatus.MAINTENANCE).count());
+        return stats;
     }
 
     private RoomStatus parseRoomStatus(String status) {

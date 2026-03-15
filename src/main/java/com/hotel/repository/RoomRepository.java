@@ -21,6 +21,8 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
 
     List<Room> findByType(RoomType type);
 
+    List<Room> findByType(String type);
+
     boolean existsByNumber(String number);
 
     /**
