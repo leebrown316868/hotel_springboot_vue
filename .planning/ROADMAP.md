@@ -12,7 +12,7 @@
 | 2. 房间管理 | 3/3 | Complete   | 2026-03-14 |
 | 3. 客户管理 | 3/3 | Complete   | 2026-03-14 |
 | 4. 预订管理 | 4/4 | Complete   | 2026-03-15 |
-| 5. 数据统计 | 0/2 | Not started | - |
+| 5. 数据统计 | 2/2 | Complete   | 2026-03-15 |
 | 6. 个人中心 | 0/2 | Not started | - |
 
 ## Phases
@@ -21,7 +21,7 @@
 - [x] **Phase 2: 房间管理** - 房间CRUD、状态管理、筛选查询 (completed 2026-03-14)
 - [x] **Phase 3: 客户管理** - 客户信息管理、搜索、预订历史 (completed 2026-03-14)
 - [x] **Phase 4: 预订管理** - 预订流程、订单状态流转、支付模拟 (completed 2026-03-15)
-- [ ] **Phase 5: 数据统计** - 仪表板、图表、实时数据统计
+- [x] **Phase 5: 数据统计** - 仪表板、图表、实时数据统计 (completed 2026-03-15)
 - [ ] **Phase 6: 个人中心** - 个人资料、历史订单、评价反馈
 
 ## Phase Details
@@ -127,8 +127,8 @@
 
 **Plans**: 2
 
-- [ ] 05-01-PLAN.md — 统计数据API实现（DTO、Service、Controller）
-- [ ] 05-02-PLAN.md — 仪表板前端集成（API工具、类型定义、Dashboard.vue）
+- [x] 05-01-PLAN.md — 统计数据API实现（DTO、Service、Controller） ✅ 2026-03-15
+- [x] 05-02-PLAN.md — 仪表板前端集成（API工具、类型定义、Dashboard.vue） ✅ 2026-03-15
 
 ### Phase 6: 个人中心
 
@@ -144,7 +144,10 @@
 3. 客户可以查看历史订单
 4. 客户可以对已完成订单进行评价反馈
 
-**Plans**: TBD
+**Plans**: 2
+
+- [ ] 06-01-PLAN.md — 个人资料和评价后端API实现（User扩展、Review实体、ProfileController、ReviewController）
+- [ ] 06-02-PLAN.md — 个人中心前端集成（Profile.vue、HistoryFeedback.vue与API集成）
 
 ## Requirements Coverage
 
@@ -185,4 +188,4 @@ Phase 1 (基础+认证)
 
 ---
 *Roadmap created: 2026-03-14*
-*Last updated: 2026-03-15 - Phase 5 plans created*
+*Last updated: 2026-03-15 - Phase 6 plans created*
