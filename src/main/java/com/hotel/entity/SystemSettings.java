@@ -69,6 +69,12 @@ public class SystemSettings {
     @Column(nullable = false, length = 50)
     private String updatedBy = "system";
 
+    @Column(columnDefinition = "TEXT")
+    private String roomTypesConfig;
+
+    @Column(nullable = false, length = 50)
+    private String updatedBy = "system";
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
