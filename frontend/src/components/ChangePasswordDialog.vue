@@ -32,12 +32,11 @@ const rules = {
   confirmPassword: [
     { required: true, message: '请确认新密码', trigger: 'blur' },
     {
-      validator: (rule: any, value: string, callback: any) => {
+      validator: (rule: any, value: string) => {
         if (value !== form.value.newPassword) {
-          callback(new Error('两次输入的密码不一致'))
-        } else {
-          callback()
+          return Promise.reject(new Error('两次输入的密码不一致'))
         }
+        return Promise.resolve()
       },
       trigger: 'blur'
     }

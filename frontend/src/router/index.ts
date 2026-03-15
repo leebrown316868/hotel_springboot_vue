@@ -93,13 +93,12 @@ router.beforeEach((to, from, next) => {
 
   if (requiresAuth && !isAuthenticated()) {
     // Redirect to login if not authenticated
-    next('/login')
+    return next('/login')
   } else if (to.path === '/login' && isAuthenticated()) {
     // Redirect to dashboard if already authenticated
-    next('/dashboard')
-  } else {
-    next()
+    return next('/dashboard')
   }
+  return next()
 })
 
 export default router
