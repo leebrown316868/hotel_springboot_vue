@@ -86,3 +86,42 @@ CREATE TABLE IF NOT EXISTS reviews (
 -- Create indexes for reviews table
 CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_booking ON reviews(booking_id);
+
+-- Create system_settings table
+CREATE TABLE IF NOT EXISTS system_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hotel_name VARCHAR(100) NOT NULL DEFAULT 'GrandHorizon 酒店及水疗中心',
+    contact_email VARCHAR(100) NOT NULL DEFAULT 'contact@grandhorizon.com',
+    contact_phone VARCHAR(20) NOT NULL DEFAULT '+1 (555) 123-4567',
+    address VARCHAR(200),
+    currency VARCHAR(10) NOT NULL DEFAULT 'CNY',
+    timezone VARCHAR(10) NOT NULL DEFAULT 'UTC+8',
+    language VARCHAR(20) NOT NULL DEFAULT 'Chinese',
+    two_factor_enabled INTEGER NOT NULL DEFAULT 0,
+    session_timeout INTEGER NOT NULL DEFAULT 30,
+    password_expiry INTEGER NOT NULL DEFAULT 90,
+    email_notification_bookings INTEGER NOT NULL DEFAULT 1,
+    email_notification_cancellations INTEGER NOT NULL DEFAULT 1,
+    push_notifications_enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    updated_by VARCHAR(50) NOT NULL DEFAULT 'system'
+);
+
+-- Create notifications table
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id VARCHAR(50) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    message VARCHAR(500) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    is_read INTEGER NOT NULL DEFAULT 0,
+    priority INTEGER NOT NULL DEFAULT 0,
+    action_link VARCHAR(200),
+    created_at TIMESTAMP NOT NULL,
+    read_at TIMESTAMP
+);
+
+-- Create indexes for notifications table
+CREATE INDEX IF NOT EXISTS idx_user_unread ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_user_created ON notifications(user_id, created_at);
