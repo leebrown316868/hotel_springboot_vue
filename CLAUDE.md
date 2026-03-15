@@ -2,6 +2,7 @@
 
 ## 项目注意事项
 - 启动项目或重启项目必须结束所有java进程taskkill //F //IM java.exe，然后mvn spring-boot:run，run mvn spring-boot:run must focus only on errors
+- 启动前端项目或重启前端项目必须先结束所有的前端node进程taskkill //F //IM bash.exe，然后npm run dev
 - 中文输出
 - win11环境
 ## 调试

@@ -39,6 +39,9 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         UserResponse response = authService.getCurrentUser(userDetails.getEmail());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
