@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     type VARCHAR NOT NULL,
     status VARCHAR NOT NULL,
     price DECIMAL NOT NULL,
+    capacity INTEGER NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
