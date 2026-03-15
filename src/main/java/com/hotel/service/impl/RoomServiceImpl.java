@@ -116,9 +116,8 @@ public class RoomServiceImpl implements RoomService {
 
     @Override
     public RoomTypeStats getRoomTypeStats(String roomType) {
-        // Convert room type code to display name for query
-        String displayName = getRoomTypeDisplayName(roomType);
-        List<Room> rooms = roomRepository.findByTypeDisplayName(displayName);
+        // roomType is the enum name (SINGLE, DOUBLE, etc.) which is stored in database
+        List<Room> rooms = roomRepository.findByTypeName(roomType);
         RoomTypeStats stats = new RoomTypeStats();
         stats.setCode(roomType);
         stats.setRoomCount(rooms.size());
@@ -127,14 +126,6 @@ public class RoomServiceImpl implements RoomService {
         stats.setCleaningCount((int) rooms.stream().filter(r -> r.getStatus() == RoomStatus.CLEANING).count());
         stats.setMaintenanceCount((int) rooms.stream().filter(r -> r.getStatus() == RoomStatus.MAINTENANCE).count());
         return stats;
-    }
-
-    private String getRoomTypeDisplayName(String roomType) {
-        try {
-            return com.hotel.entity.RoomType.valueOf(roomType).getDisplayName();
-        } catch (IllegalArgumentException e) {
-            return roomType; // Return as-is if not a valid enum
-        }
     }
 
     private RoomStatus parseRoomStatus(String status) {

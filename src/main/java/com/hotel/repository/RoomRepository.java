@@ -23,8 +23,9 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
 
     List<Room> findByType(RoomType type);
 
+    // Query by enum name (stored in database as 'SINGLE', 'DOUBLE', etc.)
     @Query(value = "SELECT * FROM rooms WHERE type = :typeName", nativeQuery = true)
-    List<Room> findByTypeDisplayName(@Param("typeName") String typeName);
+    List<Room> findByTypeName(@Param("typeName") String typeName);
 
     boolean existsByNumber(String number);
 
