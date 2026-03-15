@@ -1,38 +1,20 @@
-export interface Settings {
-  id: number
-  hotelName: string
-  contactEmail: string
-  contactPhone: string
-  address: string
-  currency: string
-  timezone: string
-  language: string
-  twoFactorEnabled: boolean
-  sessionTimeout: number
-  passwordExpiry: number
-  emailNotificationBookings: boolean
-  emailNotificationCancellations: boolean
-  pushNotificationsEnabled: boolean
-  updatedAt: string
-  updatedBy: string
+export interface RoomTypeConfig {
+  name: string
+  capacity: number
+  basePrice: number
 }
 
-export interface SettingsRequest {
-  hotelName: string
-  contactEmail: string
-  contactPhone: string
-  address: string
-  currency: string
-  timezone: string
-  language: string
-  twoFactorEnabled: boolean
-  sessionTimeout: number
-  passwordExpiry: number
-  emailNotificationBookings: boolean
-  emailNotificationCancellations: boolean
-  pushNotificationsEnabled: boolean
+export interface RoomTypeStats {
+  code: string
+  roomCount: number
+  availableCount: number
+  occupiedCount: number
+  cleaningCount: number
+  maintenanceCount: number
 }
 
-export type Currency = 'CNY' | 'USD' | 'EUR' | 'GBP'
-export type Timezone = 'UTC+8' | 'UTC+0' | 'UTC-5'
-export type Language = 'Chinese' | 'English' | 'Spanish'
+export interface RoomTypeWithStats extends RoomTypeConfig {
+  code: string
+  roomCount: number
+  availableCount: number
+}
