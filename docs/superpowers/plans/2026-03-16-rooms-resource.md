@@ -161,7 +161,92 @@ git commit -m "feat(dto): 添加 RoomTypeStats DTO
 
 ---
 
-## Chunk 2: 后端 Service 层实现
+## Chunk 2: 数据库迁移和实体更新
+
+**Files:**
+- Modify: `src/main/java/com/hotel/init/DataInitializer.java`
+- Modify: `src/main/java/com/hotel/entity/SystemSettings.java`
+
+---
+
+### Task 3: 添加数据库迁移和实体字段
+
+**说明：** SystemSettings 表使用单一记录模式，添加 `roomTypesConfig` 字段存储房型配置 JSON
+
+**Files:**
+- Modify: `src/main/java/com/hotel/entity/SystemSettings.java`
+- Modify: `src/main/java/com/hotel/init/DataInitializer.java`
+
+- [ ] **Step 1: 在 SystemSettings 实体中添加 roomTypesConfig 字段**
+
+在 `SystemSettings.java` 的 `updatedBy` 字段之前添加：
+
+```java
+// 房型配置 (JSON 格式存储)
+@Column(columnDefinition = "TEXT")
+private String roomTypesConfig;
+```
+
+添加 getter/setter 方法（如果使用 @Data 则自动生成）
+
+- [ ] **Step 2: 在 DataInitializer 中添加数据库迁移逻辑**
+
+在 `DataInitializer.java` 的 `migrateDatabase()` 方法中添加房型配置字段的迁移：
+
+```java
+private void migrateDatabase() {
+    try (Connection conn = dataSource.getConnection()) {
+        // Check if capacity column exists in rooms table
+        ResultSet rs = conn.getMetaData().getColumns(null, null, "rooms", "capacity");
+        if (!rs.next()) {
+            logger.info("Adding capacity column to rooms table...");
+            conn.createStatement().executeUpdate("ALTER TABLE rooms ADD COLUMN capacity INTEGER DEFAULT 2 NOT NULL");
+            logger.info("Capacity column added successfully");
+        } else {
+            logger.debug("Capacity column already exists in rooms table");
+        }
+        rs.close();
+
+        // Check if room_types_config column exists in system_settings table
+        ResultSet rs2 = conn.getMetaData().getColumns(null, null, "system_settings", "room_types_config");
+        if (!rs2.next()) {
+            logger.info("Adding room_types_config column to system_settings table...");
+            conn.createStatement().executeUpdate("ALTER TABLE system_settings ADD COLUMN room_types_config TEXT");
+            logger.info("room_types_config column added successfully");
+        } else {
+            logger.debug("room_types_config column already exists in system_settings table");
+        }
+        rs2.close();
+    } catch (Exception e) {
+        logger.warn("Database migration failed (may already exist): {}", e.getMessage());
+    }
+}
+```
+
+需要添加导入（如果还没有）：
+```java
+import java.sql.ResultSet;
+```
+
+- [ ] **Step 3: 验证编译**
+
+Run: `mvn compile`
+Expected: BUILD SUCCESS
+
+- [ ] **Step 4: 提交**
+
+```bash
+git add src/main/java/com/hotel/entity/SystemSettings.java
+git add src/main/java/com/hotel/init/DataInitializer.java
+git commit -m "feat(entity): SystemSettings 添加房型配置字段
+
+- 添加 roomTypesConfig 字段存储 JSON 配置
+- 添加数据库迁移逻辑"
+```
+
+---
+
+## Chunk 3: 后端 Service 层实现
 
 **Files:**
 - Modify: `src/main/java/com/hotel/service/SettingsService.java`
@@ -231,121 +316,85 @@ git commit -m "feat(service): SettingsService 添加房型配置方法
 **Files:**
 - Modify: `src/main/java/com/hotel/service/impl/SettingsServiceImpl.java`
 
-- [ ] **Step 1: 添加默认房型配置常量和实现方法**
+**说明：** SystemSettings 实体的 roomTypesConfig 字段已在 Chunk 2, Task 3 中添加
 
-在 `SettingsServiceImpl.java` 中添加以下代码：
+- [ ] **Step 1: 添加 ObjectMapper 依赖和房型配置方法**
+
+在 `SettingsServiceImpl.java` 中，首先添加 `ObjectMapper` 作为依赖注入（在构造函数字段中）：
 
 ```java
-package com.hotel.service.impl;
+private final ObjectMapper objectMapper;
+```
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hotel.dto.RoomTypeConfig;
-import com.hotel.dto.SettingsRequest;
-import com.hotel.dto.SettingsResponse;
-import com.hotel.entity.SystemSettings;
-import com.hotel.mapper.SettingsMapper;
-import com.hotel.repository.SystemSettingsRepository;
-import com.hotel.service.SettingsService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+然后添加以下方法实现：
 
-import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.Map;
-
-@Service
-@RequiredArgsConstructor
-@Slf4j
-public class SettingsServiceImpl implements SettingsService {
-
-    private final SystemSettingsRepository repository;
-    private final SettingsMapper mapper;
-    private final ObjectMapper objectMapper;
-
-    private static final String ROOM_TYPES_CONFIG_KEY = "room_types_config";
-
-    @Override
-    public SettingsResponse getSettings() {
+```java
+@Override
+public Map<String, RoomTypeConfig> getRoomTypesConfig() {
+    try {
         SystemSettings settings = repository.getSingleton();
-        return mapper.toResponse(settings);
-    }
+        String configJson = settings.getRoomTypesConfig();
 
-    @Override
-    @Transactional
-    public SettingsResponse updateSettings(SettingsRequest request, String updatedBy) {
-        SystemSettings settings = repository.getSingleton();
-        mapper.updateEntityFromRequest(request, settings);
-        settings.setUpdatedBy(updatedBy);
-        SystemSettings saved = repository.save(settings);
-        return mapper.toResponse(saved);
-    }
-
-    @Override
-    public Map<String, RoomTypeConfig> getRoomTypesConfig() {
-        try {
-            SystemSettings settings = repository.getSingleton();
-            String configJson = settings.getRoomTypesConfig();
-
-            if (configJson == null || configJson.isEmpty()) {
-                log.info("Room types config not found, returning default config");
-                return getDefaultRoomTypesConfig();
-            }
-
-            return objectMapper.readValue(configJson, new TypeReference<Map<String, RoomTypeConfig>>() {});
-        } catch (Exception e) {
-            log.error("Failed to parse room types config, returning default", e);
+        if (configJson == null || configJson.isEmpty()) {
+            log.info("Room types config not found, returning default config");
             return getDefaultRoomTypesConfig();
         }
+
+        return objectMapper.readValue(configJson, new TypeReference<Map<String, RoomTypeConfig>>() {});
+    } catch (Exception e) {
+        log.error("Failed to parse room types config, returning default", e);
+        return getDefaultRoomTypesConfig();
     }
+}
 
-    @Override
-    @Transactional
-    public Map<String, RoomTypeConfig> updateRoomTypesConfig(Map<String, RoomTypeConfig> config) {
-        try {
-            String configJson = objectMapper.writeValueAsString(config);
+@Override
+@Transactional
+public Map<String, RoomTypeConfig> updateRoomTypesConfig(Map<String, RoomTypeConfig> config) {
+    try {
+        String configJson = objectMapper.writeValueAsString(config);
 
-            SystemSettings settings = repository.getSingleton();
-            settings.setRoomTypesConfig(configJson);
-            repository.save(settings);
+        SystemSettings settings = repository.getSingleton();
+        settings.setRoomTypesConfig(configJson);
+        repository.save(settings);
 
-            log.info("Room types config updated successfully");
-            return config;
-        } catch (Exception e) {
-            log.error("Failed to update room types config", e);
-            throw new RuntimeException("Failed to update room types config: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * 获取默认房型配置
-     */
-    private Map<String, RoomTypeConfig> getDefaultRoomTypesConfig() {
-        Map<String, RoomTypeConfig> config = new HashMap<>();
-
-        config.put("SINGLE", new RoomTypeConfig("单人间", 1, new BigDecimal("150")));
-        config.put("DOUBLE", new RoomTypeConfig("双人间", 2, new BigDecimal("220")));
-        config.put("SUITE", new RoomTypeConfig("套房", 2, new BigDecimal("350")));
-        config.put("EXECUTIVE_SUITE", new RoomTypeConfig("行政套房", 3, new BigDecimal("500")));
-        config.put("PRESIDENTIAL_SUITE", new RoomTypeConfig("总统套房", 4, new BigDecimal("850")));
-
+        log.info("Room types config updated successfully");
         return config;
+    } catch (Exception e) {
+        log.error("Failed to update room types config", e);
+        throw new RuntimeException("Failed to update room types config: " + e.getMessage(), e);
     }
+}
+
+/**
+ * 获取默认房型配置
+ */
+private Map<String, RoomTypeConfig> getDefaultRoomTypesConfig() {
+    Map<String, RoomTypeConfig> config = new HashMap<>();
+
+    config.put("SINGLE", new RoomTypeConfig("单人间", 1, new BigDecimal("150")));
+    config.put("DOUBLE", new RoomTypeConfig("双人间", 2, new BigDecimal("220")));
+    config.put("SUITE", new RoomTypeConfig("套房", 2, new BigDecimal("350")));
+    config.put("EXECUTIVE_SUITE", new RoomTypeConfig("行政套房", 3, new BigDecimal("500")));
+    config.put("PRESIDENTIAL_SUITE", new RoomTypeConfig("总统套房", 4, new BigDecimal("850")));
+
+    return config;
 }
 ```
 
-- [ ] **Step 2: 在 SystemSettings 实体中添加字段**
-
-修改 `src/main/java/com/hotel/entity/SystemSettings.java`，添加 `roomTypesConfig` 字段：
-
+需要添加导入：
 ```java
-@Column(columnDefinition = "TEXT")
-private String roomTypesConfig;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hotel.dto.RoomTypeConfig;
+import lombok.extern.slf4j.Slf4j;
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
 ```
 
-- [ ] **Step 3: 验证编译**
+在类上添加 `@Slf4j` 注解（如果没有）
+
+- [ ] **Step 2: 验证编译**
 
 Run: `mvn compile`
 Expected: BUILD SUCCESS
@@ -548,90 +597,64 @@ git commit -m "feat(controller): SettingsController 添加房型配置 API
 
 ---
 
-## Chunk 4: 数据初始化
+## Chunk 5: 前端类型定义和 API
+
+**说明：** 数据初始化已由 SettingsServiceImpl.getDefaultRoomTypesConfig() 处理，首次访问时自动使用默认配置
 
 **Files:**
-- Modify: `src/main/java/com/hotel/init/DataInitializer.java`
+- Create: `frontend/src/types/settings.ts`
+- Modify: `frontend/src/api/settings.ts`
 
 ---
 
-### Task 7: 初始化默认房型配置
+### Task 7: 创建前端类型定义
 
 **Files:**
-- Modify: `src/main/java/com/hotel/init/DataInitializer.java`
+- Create: `frontend/src/types/settings.ts`
 
-- [ ] **Step 1: 在 initializeSystemSettings 方法中添加房型配置初始化**
+- [ ] **Step 1: 创建 settings 类型文件**
 
-修改 `DataInitializer.java` 中的 `initializeSystemSettings()` 方法：
+```typescript
+// 注意：ApiResponse 已在 @/types/api 中定义，这里不再重复定义
+// 导入方式：import type { ApiResponse } from '@/types/api'
 
-```java
-private void initializeSystemSettings() {
-    try {
-        if (systemSettingsRepository.count() > 0) {
-            logger.info("System settings already exist, checking room types config...");
-
-            // 检查是否需要初始化房型配置
-            SystemSettings settings = systemSettingsRepository.getSingleton();
-            if (settings.getRoomTypesConfig() == null || settings.getRoomTypesConfig().isEmpty()) {
-                initializeDefaultRoomTypesConfig(settings);
-            }
-
-            logger.info("System settings already exist, skipping full initialization");
-            return;
-        }
-
-        SystemSettings settings = new SystemSettings();
-        initializeDefaultRoomTypesConfig(settings);
-        systemSettingsRepository.save(settings);
-        logger.info("Default system settings initialized successfully");
-    } catch (Exception e) {
-        logger.warn("System settings initialization failed: {}", e.getMessage());
-    }
+export interface RoomTypeConfig {
+  name: string
+  capacity: number
+  basePrice: number
 }
 
-private void initializeDefaultRoomTypesConfig(SystemSettings settings) {
-    try {
-        ObjectMapper objectMapper = new ObjectMapper();
+export interface RoomTypeStats {
+  code: string
+  roomCount: number
+  availableCount: number
+  occupiedCount: number
+  cleaningCount: number
+  maintenanceCount: number
+}
 
-        Map<String, Map<String, Object>> defaultConfig = new HashMap<>();
-        defaultConfig.put("SINGLE", Map.of("name", "单人间", "capacity", 1, "basePrice", 150));
-        defaultConfig.put("DOUBLE", Map.of("name", "双人间", "capacity", 2, "basePrice", 220));
-        defaultConfig.put("SUITE", Map.of("name", "套房", "capacity", 2, "basePrice", 350));
-        defaultConfig.put("EXECUTIVE_SUITE", Map.of("name", "行政套房", "capacity", 3, "basePrice", 500));
-        defaultConfig.put("PRESIDENTIAL_SUITE", Map.of("name", "总统套房", "capacity", 4, "basePrice", 850));
-
-        String configJson = objectMapper.writeValueAsString(defaultConfig);
-        settings.setRoomTypesConfig(configJson);
-
-        logger.info("Default room types config initialized");
-    } catch (Exception e) {
-        logger.warn("Failed to initialize default room types config: {}", e.getMessage());
-    }
+export interface RoomTypeWithStats extends RoomTypeConfig {
+  code: string
+  roomCount: number
+  availableCount: number
 }
 ```
 
-需要添加导入：
-
-```java
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.HashMap;
-import java.util.Map;
-```
-
-- [ ] **Step 2: 验证编译**
-
-Run: `mvn compile`
-Expected: BUILD SUCCESS
-
-- [ ] **Step 3: 提交**
+- [ ] **Step 2: 提交**
 
 ```bash
-git add src/main/java/com/hotel/init/DataInitializer.java
-git commit -m "feat(init): 添加默认房型配置初始化
+git add frontend/src/types/settings.ts
+git commit -m "feat(types): 添加房型配置相关类型定义
 
-- 系统启动时自动初始化房型配置
-- 支持已有系统的配置更新"
+- RoomTypeConfig 房型
+- RoomTypeStats 房型统计
+- RoomTypeWithStats 带统计的房型
+- 注意：ApiResponse 使用 @/types/api 中的定义"
 ```
+
+---
+
+### Task 8: 扩展前端 settings API
 
 ---
 
@@ -1154,7 +1177,50 @@ git commit -m "feat(view): 实现 RoomsResource 页面完整功能
 
 ---
 
-## Chunk 7: 测试和验证
+## Chunk 7: 测试数据设置
+
+**说明：** 在测试前需要设置测试用户账号
+
+**测试账号：**
+- 管理员：admin@hotel.com / admin123 (角色: ADMIN)
+- 员工：staff@hotel.com / staff123 (角色: STAFF)
+
+**获取测试 Token：**
+
+1. 使用管理员账号登录：
+```
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@hotel.com",
+  "password": "admin123"
+}
+```
+保存返回的 `token` 值作为 `<admin_token>`
+
+2. 使用员工账号登录：
+```
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "staff@hotel.com",
+  "password": "staff123"
+}
+```
+保存返回的 `token` 值作为 `<staff_token>`
+
+**HTTP 请求格式：**
+所有 API 请求需要在 Headers 中添加：
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+---
+
+## Chunk 8: 测试和验证
 
 ---
 
