@@ -66,9 +66,6 @@ public class SystemSettings {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(nullable = false, length = 50)
-    private String updatedBy = "system";
-
     @Column(columnDefinition = "TEXT")
     private String roomTypesConfig;
 
