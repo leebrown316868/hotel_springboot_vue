@@ -23,7 +23,7 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
 
     List<Room> findByType(RoomType type);
 
-    @Query("SELECT r FROM Room r WHERE r.type.displayName = :typeName")
+    @Query(value = "SELECT * FROM rooms WHERE type = :typeName", nativeQuery = true)
     List<Room> findByTypeDisplayName(@Param("typeName") String typeName);
 
     boolean existsByNumber(String number);
