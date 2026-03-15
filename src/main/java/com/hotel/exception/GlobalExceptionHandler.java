@@ -123,6 +123,22 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
     }
 
+    @ExceptionHandler(ProfileNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleProfileNotFoundException(ProfileNotFoundException ex) {
+        log.error("Profile not found exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(ReviewAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleReviewAlreadyExistsException(ReviewAlreadyExistsException ex) {
+        log.error("Review already exists exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
