@@ -72,7 +72,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "  b.checkOutDate > :checkIn AND " +
            "  b.status NOT IN :excludeStatuses" +
            ") " +
-           "AND (:guestCount IS NULL OR r.maxCapacity >= :guestCount) " +
+           "AND (:guestCount IS NULL OR r.capacity >= :guestCount) " +
            "AND (:roomTypes IS NULL OR r.type IN :roomTypes)")
     List<Room> findAvailableRooms(
         @Param("checkIn") LocalDate checkIn,

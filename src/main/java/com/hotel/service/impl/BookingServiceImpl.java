@@ -1,0 +1,329 @@
+package com.hotel.service.impl;
+
+import com.hotel.dto.BookingListResponse;
+import com.hotel.dto.BookingRequest;
+import com.hotel.dto.BookingResponse;
+import com.hotel.dto.RoomResponse;
+import com.hotel.dto.RoomSearchRequest;
+import com.hotel.entity.Booking;
+import com.hotel.entity.BookingStatus;
+import com.hotel.entity.Guest;
+import com.hotel.entity.PaymentStatus;
+import com.hotel.entity.Room;
+import com.hotel.entity.RoomStatus;
+import com.hotel.exception.BookingNotFoundException;
+import com.hotel.exception.GuestNotFoundException;
+import com.hotel.exception.InvalidBookingStatusException;
+import com.hotel.exception.PaymentFailedException;
+import com.hotel.exception.RoomNotFoundException;
+import com.hotel.exception.RoomNotAvailableException;
+import com.hotel.mapper.BookingMapper;
+import com.hotel.mapper.RoomMapper;
+import com.hotel.repository.BookingRepository;
+import com.hotel.repository.GuestRepository;
+import com.hotel.repository.RoomRepository;
+import com.hotel.service.BookingService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class BookingServiceImpl implements BookingService {
+
+    private final BookingRepository bookingRepository;
+    private final GuestRepository guestRepository;
+    private final RoomRepository roomRepository;
+    private final BookingMapper bookingMapper;
+    private final RoomMapper roomMapper;
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    @Override
+    public BookingListResponse findAll(String search, String status, Pageable pageable) {
+        Page<Booking> bookings;
+
+        if (search != null && !search.trim().isEmpty()) {
+            bookings = bookingRepository.searchByKeyword(search, pageable);
+        } else if (status != null && !status.trim().isEmpty()) {
+            BookingStatus bookingStatus = bookingMapper.parseBookingStatus(status);
+            if (bookingStatus != null) {
+                bookings = bookingRepository.findByStatusIn(List.of(bookingStatus), pageable);
+            } else {
+                bookings = Page.empty(pageable);
+            }
+        } else {
+            bookings = bookingRepository.findAll(pageable);
+        }
+
+        return bookingMapper.toResponseList(bookings);
+    }
+
+    @Override
+    public BookingListResponse findByGuestId(Long guestId, Pageable pageable) {
+        Guest guest = guestRepository.findById(guestId)
+                .orElseThrow(() -> new GuestNotFoundException("客户不存在: " + guestId));
+
+        Page<Booking> bookings = bookingRepository.findByGuest_IdOrderByCreatedAtDesc(guestId, pageable);
+        return bookingMapper.toResponseList(bookings);
+    }
+
+    @Override
+    public BookingResponse findById(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + id));
+        return bookingMapper.toResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse create(BookingRequest request, Long userId) {
+        // 验证日期
+        if (request.getCheckInDate().isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("入住日期不能早于今天");
+        }
+        if (request.getCheckOutDate().isBefore(request.getCheckInDate())) {
+            throw new IllegalArgumentException("退房日期必须晚于入住日期");
+        }
+
+        // 查询客户
+        Guest guest = guestRepository.findById(request.getGuestId())
+                .orElseThrow(() -> new GuestNotFoundException("客户不存在: " + request.getGuestId()));
+
+        // 查询房间
+        Room room = roomRepository.findById(request.getRoomId())
+                .orElseThrow(() -> new RoomNotFoundException("房间不存在: " + request.getRoomId()));
+
+        // 检查房间是否可用
+        if (!isRoomAvailable(room, request.getCheckInDate(), request.getCheckOutDate())) {
+            throw new RoomNotAvailableException("房间在指定日期不可用");
+        }
+
+        // 计算总价
+        long nights = java.time.temporal.ChronoUnit.DAYS.between(request.getCheckInDate(), request.getCheckOutDate());
+        BigDecimal totalAmount = room.getPrice().multiply(BigDecimal.valueOf(nights));
+
+        // 生成订单编号
+        String bookingNumber = generateBookingNumber();
+
+        // 创建预订
+        Booking booking = Booking.builder()
+                .bookingNumber(bookingNumber)
+                .guest(guest)
+                .guestName(guest.getName())
+                .room(room)
+                .roomType(room.getType())
+                .checkInDate(request.getCheckInDate())
+                .checkOutDate(request.getCheckOutDate())
+                .guestCount(request.getGuestCount())
+                .status(BookingStatus.PENDING)
+                .totalAmount(totalAmount)
+                .paymentStatus(PaymentStatus.UNPAID)
+                .build();
+
+        booking = bookingRepository.save(booking);
+        log.info("Created booking with number: {}", bookingNumber);
+
+        return bookingMapper.toResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse updateStatus(Long id, String status) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + id));
+
+        BookingStatus newStatus = bookingMapper.parseBookingStatus(status);
+        if (newStatus == null) {
+            throw new IllegalArgumentException("无效的订单状态: " + status);
+        }
+
+        // 验证状态流转
+        if (!isValidStatusTransition(booking.getStatus(), newStatus)) {
+            throw new InvalidBookingStatusException(
+                    "不能从 " + booking.getStatus() + " 转换到 " + newStatus);
+        }
+
+        booking.setStatus(newStatus);
+        booking = bookingRepository.save(booking);
+
+        log.info("Updated booking {} status to {}", id, newStatus);
+        return bookingMapper.toResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public void cancelBooking(Long id, Long userId) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + id));
+
+        if (booking.getStatus() != BookingStatus.PENDING &&
+                booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new InvalidBookingStatusException("只有待确认或已确认的订单可以取消");
+        }
+
+        booking.setStatus(BookingStatus.CANCELLED);
+        if (booking.getPaymentStatus() == PaymentStatus.PAID) {
+            booking.setPaymentStatus(PaymentStatus.REFUNDED);
+        }
+
+        bookingRepository.save(booking);
+        log.info("Cancelled booking {}", id);
+    }
+
+    @Override
+    @Transactional
+    public void checkIn(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + id));
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new InvalidBookingStatusException("只有已确认的订单可以办理入住");
+        }
+
+        booking.setStatus(BookingStatus.CHECKED_IN);
+
+        // 更新房间状态
+        Room room = booking.getRoom();
+        room.setStatus(RoomStatus.OCCUPIED);
+        roomRepository.save(room);
+
+        bookingRepository.save(booking);
+        log.info("Checked in booking {}", id);
+    }
+
+    @Override
+    @Transactional
+    public void checkOut(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + id));
+
+        if (booking.getStatus() != BookingStatus.CHECKED_IN) {
+            throw new InvalidBookingStatusException("只有已入住的订单可以办理退房");
+        }
+
+        booking.setStatus(BookingStatus.CHECKED_OUT);
+
+        // 更新房间状态
+        Room room = booking.getRoom();
+        room.setStatus(RoomStatus.CLEANING);
+        roomRepository.save(room);
+
+        bookingRepository.save(booking);
+        log.info("Checked out booking {}", id);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse processPayment(Long id, String paymentMethod) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + id));
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new InvalidBookingStatusException("只有待确认的订单可以支付");
+        }
+
+        // 模拟支付处理延迟
+        try {
+            Thread.sleep(ThreadLocalRandom.current().nextLong(1000, 2000));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // 模拟约5%的失败率
+        if (new Random().nextDouble() < 0.05) {
+            throw new PaymentFailedException("支付失败，请重试");
+        }
+
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setPaymentStatus(PaymentStatus.PAID);
+
+        booking = bookingRepository.save(booking);
+        log.info("Payment processed for booking {}", id);
+
+        return bookingMapper.toResponse(booking);
+    }
+
+    @Override
+    public List<RoomResponse> findAvailableRooms(RoomSearchRequest request) {
+        // 验证日期
+        if (request.getCheckInDate().isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("入住日期不能早于今天");
+        }
+        if (request.getCheckOutDate().isBefore(request.getCheckInDate())) {
+            throw new IllegalArgumentException("退房日期必须晚于入住日期");
+        }
+
+        // 查询可用房间
+        List<Room> rooms = bookingRepository.findAvailableRooms(
+                request.getCheckInDate(),
+                request.getCheckOutDate(),
+                request.getGuestCount(),
+                request.getRoomTypes(),
+                List.of(BookingStatus.CANCELLED, BookingStatus.CHECKED_OUT)
+        );
+
+        return rooms.stream()
+                .map(roomMapper::toResponse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * 生成订单编号
+     * 格式：BK-YYYYMMDD-序号
+     */
+    private String generateBookingNumber() {
+        String today = LocalDate.now().format(DATE_FORMATTER);
+        Long count = bookingRepository.countByCreatedAtBetween(
+                LocalDate.now(), LocalDate.now().plusDays(1));
+
+        if (count == null) {
+            count = 0L;
+        }
+
+        String sequence = String.format("%03d", count + 1);
+        return "BK-" + today.replace("-", "") + "-" + sequence;
+    }
+
+    /**
+     * 检查房间是否可用
+     */
+    private boolean isRoomAvailable(Room room, LocalDate checkIn, LocalDate checkOut) {
+        boolean isBooked = bookingRepository.existsByRoomAndCheckInDateBeforeAndCheckOutDateAfterAndStatusNotIn(
+                room,
+                checkOut,
+                checkIn,
+                List.of(BookingStatus.CANCELLED, BookingStatus.CHECKED_OUT)
+        );
+        return !isBooked;
+    }
+
+    /**
+     * 验证状态流转是否合法
+     */
+    private boolean isValidStatusTransition(BookingStatus from, BookingStatus to) {
+        if (from == BookingStatus.PENDING) {
+            return to == BookingStatus.CONFIRMED || to == BookingStatus.CANCELLED;
+        } else if (from == BookingStatus.CONFIRMED) {
+            return to == BookingStatus.CHECKED_IN || to == BookingStatus.CANCELLED;
+        } else if (from == BookingStatus.CHECKED_IN) {
+            return to == BookingStatus.CHECKED_OUT;
+        } else {
+            return false;
+        }
+    }
+}
