@@ -5,10 +5,12 @@ import com.hotel.entity.GuestStatus;
 import com.hotel.entity.Room;
 import com.hotel.entity.RoomStatus;
 import com.hotel.entity.RoomType;
+import com.hotel.entity.SystemSettings;
 import com.hotel.entity.User;
 import com.hotel.entity.UserRole;
 import com.hotel.repository.GuestRepository;
 import com.hotel.repository.RoomRepository;
+import com.hotel.repository.SystemSettingsRepository;
 import com.hotel.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +23,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.context.event.EventListener;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -43,10 +48,19 @@ public class DataInitializer {
     @Autowired
     private GuestRepository guestRepository;
 
+    @Autowired
+    private SystemSettingsRepository systemSettingsRepository;
+
+    @Autowired
+    private DataSource dataSource;
+
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void initializeData() {
         logger.info("DataInitializer started");
+
+        // Migrate database schema if needed
+        migrateDatabase();
 
         // Create admin account
         createAdminAccount();
@@ -59,6 +73,9 @@ public class DataInitializer {
 
         // Initialize guest data
         initializeGuests();
+
+        // Initialize system settings
+        initializeSystemSettings();
 
         logger.info("DataInitializer completed");
     }
@@ -138,12 +155,35 @@ public class DataInitializer {
     }
 
     private void createRoom(String number, String floor, RoomType type, RoomStatus status, BigDecimal price) {
+        // 根据房型设置容量
+        Integer capacity;
+        switch (type) {
+            case SINGLE:
+                capacity = 1;
+                break;
+            case DOUBLE:
+                capacity = 2;
+                break;
+            case SUITE:
+                capacity = 4;
+                break;
+            case EXECUTIVE_SUITE:
+                capacity = 2;
+                break;
+            case PRESIDENTIAL_SUITE:
+                capacity = 2;
+                break;
+            default:
+                capacity = 2;
+        }
+
         Room room = Room.builder()
                 .number(number)
                 .floor(floor)
                 .type(type)
                 .status(status)
                 .price(price)
+                .capacity(capacity)
                 .build();
         roomRepository.save(room);
         logger.debug("Room created: {} - {} ({})", number, type.getDisplayName(), floor + "楼");
@@ -210,5 +250,37 @@ public class DataInitializer {
                 .build();
         guestRepository.save(guest);
         logger.debug("Guest created: {} ({}) - {} bookings, status: {}", name, country, totalBookings, status);
+    }
+
+    private void migrateDatabase() {
+        try (Connection conn = dataSource.getConnection()) {
+            // Check if capacity column exists in rooms table
+            ResultSet rs = conn.getMetaData().getColumns(null, null, "rooms", "capacity");
+            if (!rs.next()) {
+                logger.info("Adding capacity column to rooms table...");
+                conn.createStatement().executeUpdate("ALTER TABLE rooms ADD COLUMN capacity INTEGER DEFAULT 2 NOT NULL");
+                logger.info("Capacity column added successfully");
+            } else {
+                logger.debug("Capacity column already exists in rooms table");
+            }
+            rs.close();
+        } catch (Exception e) {
+            logger.warn("Database migration failed (may already exist): {}", e.getMessage());
+        }
+    }
+
+    private void initializeSystemSettings() {
+        try {
+            if (systemSettingsRepository.count() > 0) {
+                logger.info("System settings already exist, skipping initialization");
+                return;
+            }
+
+            SystemSettings settings = new SystemSettings();
+            systemSettingsRepository.save(settings);
+            logger.info("Default system settings initialized successfully");
+        } catch (Exception e) {
+            logger.warn("System settings initialization failed: {}", e.getMessage());
+        }
     }
 }
