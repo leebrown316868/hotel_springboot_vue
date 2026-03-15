@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-last_updated: "2026-03-15T11:17:08.242Z"
+current_plan: 06-02 - 个人资料和评价服务层实现（已完成）
+status: Ready for next plan
+last_updated: "2026-03-15T11:27:32.035Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 18
-  completed_plans: 16
-  percent: 89
+  completed_plans: 17
+  percent: 94
 ---
 
 # 酒店民宿管理系统 - 项目状态
@@ -24,25 +25,26 @@ progress:
 
 ## Current Position
 
-**Phase:** Phase 5 - 数据统计（已完成）
-**Previous:** Phase 4 - 预订管理（已完成）
-**Status:** Ready to plan
+**Phase:** Phase 6 - 个人资料和评价（进行中）
+**Current Plan:** 06-02 - 个人资料和评价服务层实现（已完成）
+**Previous:** Phase 5 - 数据统计（已完成）
+**Status:** Ready for next plan
 
 **Progress:**
-[█████████░] 89%
+[█████████░] 94%
 Phase 1: [██████████] 100%
 Phase 2: [██████████] 100%
 Phase 3: [██████████] 100%
 Phase 4: [██████████] 100%
 Phase 5: [██████████] 100%
-Phase 6: [░░░░░░░░░░] 0%
+Phase 6: [██████░░░░] 33%
 
-Overall: [████████░] 83%
+Overall: [█████████] 94%
 
 ## Performance Metrics
 
-**Requirements completed:** 38/48 (79%)
-**Plans completed:** 16/19 (84%)
+**Requirements completed:** 42/48 (88%)
+**Plans completed:** 17/19 (89%)
 **Phases completed:** 4/6 (67%)
 
 ## Accumulated Context
@@ -66,6 +68,9 @@ Overall: [████████░] 83%
 | 使用hasRole进行权限控制 | 与其他Controller保持一致，使用Spring Security标准角色 | 2026-03-15 |
 | 订单编号格式BK-YYYYMMDD-序号 | 确保唯一性和可读性，方便查找和管理 | 2026-03-15 |
 | 模拟支付5%失败率 | 便于测试和展示错误处理场景 | 2026-03-15 |
+| ProfileResponse不包含address字段 | 与前端Profile.vue数据结构保持一致 | 2026-03-15 |
+| 通过User.email连接User和Guest | Booking关联Guest而非User，通过email桥接实现Customer订单访问 | 2026-03-15 |
+| 只有CHECKED_OUT状态订单可评价 | 确保只有真正完成入住的订单才能被评价 | 2026-03-15 |
 | Phase 01 P02 | 1232 | 4 tasks | 17 files |
 | Phase 01 P03 | 45 | 4 tasks | 9 files |
 | Phase 02 P01 | 60 | 5 tasks | 7 files |
@@ -79,6 +84,8 @@ Overall: [████████░] 83%
 | Phase 05-data-statistics P01 | 540 | 3 tasks | 9 files |
 | Phase 05-data-statistics P02 | PT5M | 2 tasks | 3 files |
 | Phase 06-profile P01 | 180 | 3 tasks | 10 files |
+| Phase 06-profile P02 | 413 | 3 tasks | 9 files |
+| Phase 06 P02 | 413 | 3 tasks | 9 files |
 
 ### Technical Stack
 
@@ -135,8 +142,8 @@ Overall: [████████░] 83%
 
 ## Session Continuity
 
-**Last action:** 完成Phase 5 Plan 02 - 仪表板前端集成
-**Next action:** 执行Phase 6系统测试和部署准备
+**Last action:** 完成Phase 6 Plan 02 - 个人资料和评价服务层实现
+**Next action:** 执行Phase 6 Plan 03 - 前端集成
 
 ### Recent Changes
 
@@ -157,6 +164,8 @@ Overall: [████████░] 83%
 | 2026-03-15 | Plan 04-04完成 | BookingWizard.vue、StaffBookings.vue、MyBookings.vue前端组件与后端API完整集成，5步预订向导、前台订单管理、客户订单管理功能实现 |
 | 2026-03-15 | Plan 05-01完成 | 统计数据API实现，包含4个端点：仪表板统计、客房状态分布、预订趋势、最近预订 |
 | 2026-03-15 | Plan 05-02完成 | 仪表板前端集成完成，创建statistics API工具和类型定义，Dashboard.vue与后端API完整集成，实现真实数据展示 |
+| 2026-03-15 | Plan 06-01完成 | 个人资料和评价数据模型实现，扩展User实体添加个人资料字段，创建Review实体支持订单评价，定义完整DTO体系 |
+| 2026-03-15 | Plan 06-02完成 | 个人资料和评价服务层实现，ProfileService和ReviewService提供完整业务逻辑，通过email桥接User和Guest实现Customer订单访问 |
 
 ## Project Context
 
