@@ -103,4 +103,39 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         @Param("roomId") Long roomId,
         @Param("activeStatuses") List<BookingStatus> activeStatuses
     );
+
+    /**
+     * 统计今日入住数（入住日期为今天且状态为已确认或已入住）
+     */
+    @Query("SELECT COUNT(b) FROM Booking b WHERE " +
+           "b.checkInDate = :today AND " +
+           "b.status IN :statuses")
+    Long countTodayCheckIns(@Param("today") LocalDate today, @Param("statuses") List<BookingStatus> statuses);
+
+    /**
+     * 统计今日退房数（退房日期为今天且状态为已入住）
+     */
+    @Query("SELECT COUNT(b) FROM Booking b WHERE " +
+           "b.checkOutDate = :today AND " +
+           "b.status = :status")
+    Long countTodayCheckOuts(@Param("today") LocalDate today, @Param("status") BookingStatus status);
+
+    /**
+     * 统计今日预估收入（入住日期为今天且已支付的订单总金额）
+     */
+    @Query("SELECT COALESCE(SUM(b.totalAmount), 0) FROM Booking b WHERE " +
+           "b.checkInDate = :today AND " +
+           "b.paymentStatus = 'PAID'")
+    java.math.BigDecimal sumTodayRevenue(@Param("today") LocalDate today);
+
+    /**
+     * 统计指定日期范围内每天创建的预订数量
+     */
+    @Query("SELECT FUNCTION('DATE', b.createdAt) as date, COUNT(b) FROM Booking b WHERE " +
+           "b.createdAt >= :startDate AND " +
+           "b.createdAt < :endDate " +
+           "GROUP BY FUNCTION('DATE', b.createdAt) " +
+           "ORDER BY date")
+    List<Object[]> countBookingsByDate(@Param("startDate") java.time.LocalDateTime startDate,
+                                       @Param("endDate") java.time.LocalDateTime endDate);
 }

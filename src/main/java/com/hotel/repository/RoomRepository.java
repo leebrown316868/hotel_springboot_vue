@@ -22,4 +22,9 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
     List<Room> findByType(RoomType type);
 
     boolean existsByNumber(String number);
+
+    /**
+     * 统计指定状态的房间数量
+     */
+    Long countByStatus(RoomStatus status);
 }
