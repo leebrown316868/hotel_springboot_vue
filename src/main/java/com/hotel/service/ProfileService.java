@@ -1,11 +1,13 @@
 package com.hotel.service;
 
+import com.hotel.dto.ChangePasswordRequest;
 import com.hotel.dto.ProfileResponse;
 import com.hotel.dto.UpdateProfileRequest;
 import com.hotel.entity.User;
 import com.hotel.exception.ProfileNotFoundException;
 import com.hotel.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProfileService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public ProfileResponse getProfile(String email) {
         User user = userRepository.findByEmail(email)
@@ -52,5 +55,20 @@ public class ProfileService {
                 .preferencesEnabled(user.getPreferencesEnabled())
                 .role(user.getRole().name())
                 .build();
+    }
+
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ProfileNotFoundException("用户不存在"));
+
+        // 验证旧密码
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("旧密码不正确");
+        }
+
+        // 设置新密码
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }

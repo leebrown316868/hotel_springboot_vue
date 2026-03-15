@@ -1,6 +1,7 @@
 package com.hotel.controller;
 
 import com.hotel.dto.ApiResponse;
+import com.hotel.dto.ChangePasswordRequest;
 import com.hotel.dto.ProfileResponse;
 import com.hotel.dto.UpdateProfileRequest;
 import com.hotel.security.UserDetailsImpl;
@@ -32,5 +33,13 @@ public class ProfileController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         ProfileResponse response = profileService.updateProfile(userDetails.getEmail(), request);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        profileService.changePassword(userDetails.getEmail(), request);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }
