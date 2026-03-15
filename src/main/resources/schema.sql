@@ -4,6 +4,10 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR NOT NULL UNIQUE,
     password VARCHAR NOT NULL,
     name VARCHAR NOT NULL,
+    phone VARCHAR,
+    address TEXT,
+    nationality VARCHAR,
+    preferences_enabled INTEGER DEFAULT 1 NOT NULL,
     role VARCHAR NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
@@ -65,3 +69,20 @@ CREATE INDEX IF NOT EXISTS idx_booking_guest ON bookings(guest_id);
 CREATE INDEX IF NOT EXISTS idx_booking_room ON bookings(room_id);
 CREATE INDEX IF NOT EXISTS idx_booking_status ON bookings(status);
 CREATE INDEX IF NOT EXISTS idx_booking_dates ON bookings(check_in_date, check_out_date);
+
+-- Create reviews table
+CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+    comment TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(booking_id)
+);
+
+-- Create indexes for reviews table
+CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_booking ON reviews(booking_id);
