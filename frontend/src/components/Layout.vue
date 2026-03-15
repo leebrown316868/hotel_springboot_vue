@@ -1,8 +1,68 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { logout, getUser } from '../utils/auth'
+import NotificationDropdown from './NotificationDropdown.vue'
+import type { User } from '../types/auth'
 
 const route = useRoute()
+const router = useRouter()
+
+const currentUser = ref<User | null>(null)
+
+// 获取当前用户信息
+onMounted(() => {
+  currentUser.value = getUser()
+})
+
+// 处理登出
+const handleLogout = async () => {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    await logout()
+    ElMessage.success('登出成功')
+    router.push('/login')
+  } catch (error) {
+    // 用户取消操作
+    if (error !== 'cancel') {
+      ElMessage.error('登出失败，请重试')
+    }
+  }
+}
+
+// 处理个人信息
+const handleProfile = () => {
+  router.push('/profile')
+}
+
+// 处理下拉菜单命令
+const handleCommand = (command: string) => {
+  switch (command) {
+    case 'profile':
+      handleProfile()
+      break
+    case 'logout':
+      handleLogout()
+      break
+  }
+}
+
+// 获取角色标签
+const getRoleLabel = (role?: string): string => {
+  const roleMap: Record<string, string> = {
+    'ADMIN': '系统管理员',
+    'MANAGER': '物业经理',
+    'RECEPTIONIST': '前台员工',
+    'GUEST': '住客'
+  }
+  return role ? (roleMap[role] || role) : '访客'
+}
 
 const menuItems = [
   {
@@ -91,25 +151,36 @@ const menuItems = [
         </div>
         
         <div class="flex items-center gap-6">
-          <button class="relative text-slate-500 hover:text-blue-600 transition-colors">
-            <el-icon :size="24"><Bell /></el-icon>
-            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">3</span>
-          </button>
+          <NotificationDropdown />
           
           <div class="h-8 w-[1px] bg-slate-200"></div>
-          
-          <div class="flex items-center gap-3 cursor-pointer group">
-            <div class="text-right">
-              <p class="text-sm font-semibold text-slate-800">管理员用户</p>
-              <p class="text-xs text-slate-500">物业经理</p>
+
+          <el-dropdown trigger="click" @command="handleCommand">
+            <div class="flex items-center gap-3 cursor-pointer group">
+              <div class="text-right">
+                <p class="text-sm font-semibold text-slate-800">{{ currentUser?.name || '用户' }}</p>
+                <p class="text-xs text-slate-500">{{ getRoleLabel(currentUser?.role) }}</p>
+              </div>
+              <img
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuARyyja8Vtf7aKUjI3RZqwTAd7oXclLSrXMU09HBhnKEH0j4oDB6X6nhbYqn57jx3Ez2AKUs1drBlT2JlMXFRCZHry1uEfiCHetbP4_6ZYBdAbqjblf_YDzyG87kWf07Rj_dUFe3gdkWm30Mitc2w99AKAetnD8YgFteZVllRl84_omOUcxs_-bQSPdKuShXFnqHf0uLb8Yg6Puk7YZu--5tOTuW6iXSaoJhC0JXa9LLcm85G0ydg6KgxFT1ehnHtWz-dB1HiPfrL3X"
+                alt="Admin Profile"
+                class="w-10 h-10 rounded-full border border-slate-200 object-cover"
+              />
+              <el-icon class="text-slate-400 group-hover:text-blue-600 transition-colors"><ArrowDown /></el-icon>
             </div>
-            <img 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuARyyja8Vtf7aKUjI3RZqwTAd7oXclLSrXMU09HBhnKEH0j4oDB6X6nhbYqn57jx3Ez2AKUs1drBlT2JlMXFRCZHry1uEfiCHetbP4_6ZYBdAbqjblf_YDzyG87kWf07Rj_dUFe3gdkWm30Mitc2w99AKAetnD8YgFteZVllRl84_omOUcxs_-bQSPdKuShXFnqHf0uLb8Yg6Puk7YZu--5tOTuW6iXSaoJhC0JXa9LLcm85G0ydg6KgxFT1ehnHtWz-dB1HiPfrL3X" 
-              alt="Admin Profile" 
-              class="w-10 h-10 rounded-full border border-slate-200 object-cover"
-            />
-            <el-icon class="text-slate-400 group-hover:text-blue-600 transition-colors"><ArrowDown /></el-icon>
-          </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>
+                  <span>个人信息</span>
+                </el-dropdown-item>
+                <el-dropdown-item divided command="logout">
+                  <el-icon><SwitchButton /></el-icon>
+                  <span>退出登录</span>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </header>
 

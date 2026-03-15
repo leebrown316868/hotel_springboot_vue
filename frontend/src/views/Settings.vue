@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import Layout from '../components/Layout.vue'
+import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
+import { settingsApi } from '../api/settings'
+import type { Settings, SettingsRequest } from '../types/settings'
 
 const activeTab = ref('general')
 
@@ -10,12 +14,12 @@ const generalSettings = ref({
   phone: '+1 (555) 123-4567',
   address: '123 Ocean Drive, Miami, FL 33139',
   currency: 'CNY',
-  timezone: 'UTC+8 (北京时间)',
-  language: '中文'
+  timezone: 'UTC+8',
+  language: 'Chinese'
 })
 
 const securitySettings = ref({
-  twoFactor: true,
+  twoFactor: false,
   sessionTimeout: 30,
   passwordExpiry: 90
 })
@@ -23,14 +27,77 @@ const securitySettings = ref({
 const notificationSettings = ref({
   emailBookings: true,
   emailCancellations: true,
-  smsAlerts: false,
+  smsAlerts: true,
   pushNotifications: true
+})
+
+const loading = ref(false)
+const saving = ref(false)
+const showPasswordDialog = ref(false)
+
+const loadSettings = async () => {
+  try {
+    loading.value = true
+    const data = await settingsApi.getSettings()
+    generalSettings.value.hotelName = data.hotelName
+    generalSettings.value.email = data.contactEmail
+    generalSettings.value.phone = data.contactPhone
+    generalSettings.value.address = data.address
+    generalSettings.value.currency = data.currency
+    generalSettings.value.timezone = data.timezone
+    generalSettings.value.language = data.language
+    securitySettings.value.twoFactor = data.twoFactorEnabled
+    securitySettings.value.sessionTimeout = data.sessionTimeout
+    securitySettings.value.passwordExpiry = data.passwordExpiry
+    notificationSettings.value.emailBookings = data.emailNotificationBookings
+    notificationSettings.value.emailCancellations = data.emailNotificationCancellations
+    notificationSettings.value.smsAlerts = data.pushNotificationsEnabled
+  } catch (error) {
+    ElMessage.error('加载设置失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSaveSettings = async () => {
+  try {
+    saving.value = true
+    const request: SettingsRequest = {
+      hotelName: generalSettings.value.hotelName,
+      contactEmail: generalSettings.value.email,
+      contactPhone: generalSettings.value.phone,
+      address: generalSettings.value.address,
+      currency: generalSettings.value.currency,
+      timezone: generalSettings.value.timezone,
+      language: generalSettings.value.language,
+      twoFactorEnabled: securitySettings.value.twoFactor,
+      sessionTimeout: securitySettings.value.sessionTimeout,
+      passwordExpiry: securitySettings.value.passwordExpiry,
+      emailNotificationBookings: notificationSettings.value.emailBookings,
+      emailNotificationCancellations: notificationSettings.value.emailCancellations,
+      pushNotificationsEnabled: notificationSettings.value.smsAlerts
+    }
+    await settingsApi.updateSettings(request)
+    ElMessage.success('设置保存成功')
+  } catch (error: any) {
+    if (error?.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    } else {
+      ElMessage.error('保存失败，请重试')
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+onMounted(() => {
+  loadSettings()
 })
 </script>
 
 <template>
   <Layout>
-    <div class="max-w-4xl mx-auto">
+    <div v-loading="loading" class="max-w-4xl mx-auto">
       <header class="mb-8">
         <h1 class="text-2xl font-bold text-gray-900">设置</h1>
         <p class="text-sm text-gray-500 mt-1">配置您的酒店管理系统偏好</p>
@@ -81,7 +148,9 @@ const notificationSettings = ref({
                   </el-form-item>
                 </div>
                 <div class="flex justify-end mt-4">
-                  <el-button type="primary">保存更改</el-button>
+                  <el-button type="primary" :loading="saving" @click="handleSaveSettings">
+                    保存更改
+                  </el-button>
                 </div>
               </el-form>
             </div>
@@ -113,7 +182,9 @@ const notificationSettings = ref({
                   <el-input-number v-model="securitySettings.passwordExpiry" :min="30" :max="365" />
                 </div>
                 <div class="pt-6 border-t border-gray-100">
-                  <el-button type="primary" plain>更改管理员密码</el-button>
+                  <el-button type="primary" plain @click="showPasswordDialog = true">
+                    更改管理员密码
+                  </el-button>
                 </div>
               </div>
             </div>
@@ -166,13 +237,17 @@ const notificationSettings = ref({
                 </div>
               </div>
               <div class="flex justify-end mt-8">
-                <el-button type="primary">保存偏好</el-button>
+                <el-button type="primary" :loading="saving" @click="handleSaveSettings">
+                  保存偏好
+                </el-button>
               </div>
             </div>
           </el-tab-pane>
         </el-tabs>
       </div>
     </div>
+
+    <ChangePasswordDialog v-model="showPasswordDialog" />
   </Layout>
 </template>
 
