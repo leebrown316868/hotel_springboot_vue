@@ -29,6 +29,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Page<Booking> findByGuest_IdOrderByCreatedAtDesc(Long guestId, Pageable pageable);
 
     /**
+     * 根据客人ID和状态查询预订记录（按创建时间倒序）
+     */
+    List<Booking> findByGuest_IdAndStatusOrderByCreatedAtDesc(Long guestId, BookingStatus status);
+
+    /**
      * 根据状态列表查询预订
      */
     Page<Booking> findByStatusIn(List<BookingStatus> statuses, Pageable pageable);
@@ -130,12 +135,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     /**
      * 统计指定日期范围内每天创建的预订数量
+     * 使用原生SQL以兼容SQLite的DATE函数
      */
-    @Query("SELECT FUNCTION('DATE', b.createdAt) as date, COUNT(b) FROM Booking b WHERE " +
-           "b.createdAt >= :startDate AND " +
-           "b.createdAt < :endDate " +
-           "GROUP BY FUNCTION('DATE', b.createdAt) " +
-           "ORDER BY date")
+    @Query(value = "SELECT DATE(b.created_at) as date, COUNT(*) FROM bookings b WHERE " +
+           "b.created_at >= :startDate AND " +
+           "b.created_at < :endDate " +
+           "GROUP BY DATE(b.created_at) " +
+           "ORDER BY date", nativeQuery = true)
     List<Object[]> countBookingsByDate(@Param("startDate") java.time.LocalDateTime startDate,
                                        @Param("endDate") java.time.LocalDateTime endDate);
 }
