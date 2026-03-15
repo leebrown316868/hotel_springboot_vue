@@ -34,11 +34,15 @@ api.interceptors.response.use(
 
       switch (status) {
         case 401:
-          // Unauthorized - clear token and redirect to login
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          ElMessage.error('未授权，请重新登录')
-          window.location.href = '/login'
+          // Unauthorized - 只在非登录页面时重定向
+          const isLoginPage = window.location.pathname === '/login'
+          if (!isLoginPage) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            ElMessage.error('未授权，请重新登录')
+            window.location.href = '/login'
+          }
+          // 登录页面的401错误由组件自己处理，不在这里拦截
           break
         case 403:
           ElMessage.error('没有权限访问')
@@ -50,7 +54,7 @@ api.interceptors.response.use(
           ElMessage.error('服务器错误，请稍后重试')
           break
         default:
-          ElMessage.error(error.response.data as string || '请求失败')
+          ElMessage.error((error.response.data as any)?.message || '请求失败')
       }
     } else if (error.request) {
       ElMessage.error('网络连接失败，请检查网络')
