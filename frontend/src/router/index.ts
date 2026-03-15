@@ -88,18 +88,15 @@ const router = createRouter({
 })
 
 // Navigation guard for authentication
-router.beforeEach((to, from) => {
+router.beforeEach((to) => {
   const requiresAuth = to.meta.requiresAuth
 
   if (requiresAuth && !isAuthenticated()) {
-    // Redirect to login if not authenticated
-    return '/login'
-  } else if (to.path === '/login' && isAuthenticated()) {
-    // Redirect to dashboard if already authenticated
-    return '/dashboard'
+    return { name: 'login' }
   }
-  // Return undefined to continue navigation
-  return true
+  if (to.path === '/login' && isAuthenticated()) {
+    return { name: 'dashboard' }
+  }
 })
 
 export default router
