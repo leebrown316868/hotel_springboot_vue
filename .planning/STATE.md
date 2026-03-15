@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-last_updated: "2026-03-15T07:26:06.000Z"
+last_updated: "2026-03-15T15:35:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 3
@@ -25,15 +25,15 @@ progress:
 ## Current Position
 
 **Phase:** Phase 4 - 预订管理
-**Plan:** Plan 04-03（预订Controller层）已完成
-**Status:** Completed
+**Plan:** Plan 04-04（前端集成和测试）部分完成
+**Status:** Backend completed, frontend pending
 
 **Progress:**
 [████████░░] 79%
 Phase 1: [██████████] 100%
 Phase 2: [██████████] 100%
 Phase 3: [██████████] 100%
-Phase 4: [██░░░░░░░░] 33%
+Phase 4: [███░░░░░░░] 50%
 Phase 5: [░░░░░░░░░░] 0%
 Phase 6: [░░░░░░░░░░] 0%
 
@@ -126,13 +126,13 @@ Overall: [████░░░░░░] 58%
 - [x] 实现BookingService
 - [x] 实现BookingController
 - [ ] 实现预订数据初始化
-- [ ] 创建前端预订API工具类
+- [x] 创建前端预订API工具类
 - [ ] 集成前端预订组件
 
 ## Session Continuity
 
-**Last action:** 完成Phase 4 Plan 04-03（预订Controller层）
-**Next action:** 开始执行Phase 4 Plan 04-04（前端集成）或继续Phase 4其他计划
+**Last action:** 完成Phase 4 Plan 04-04（前端集成和测试）部分工作 - 后端Service和Controller层已完成，前端API文件已创建
+**Next action:** 继续Phase 4前端组件集成，或开始Phase 5支付管理
 
 ### Recent Changes
 
@@ -148,7 +148,9 @@ Overall: [████░░░░░░] 58%
 | 2026-03-14 | Plan 03-02完成 | GuestService、GuestController、GuestMapper、GuestSpecification和异常处理实现，提供完整客户管理REST API |
 | 2026-03-14 | Plan 03-03完成 | 客户数据初始化、前端API工具类创建、Guests.vue集成真实API，完成Phase 3客户管理 |
 | 2026-03-15 | Plan 04-01完成 | Booking实体、BookingStatus和PaymentStatus枚举、BookingRepository和DTO类创建 |
-| 2026-03-15 | Plan 04-03完成 | BookingController实现，包含10个预订管理REST API端点，权限控制集成 |
+| 2026-03-15 | Plan 04-02完成 | BookingService接口和BookingServiceImpl实现，包含订单编号生成、可用房间搜索、预订创建、状态流转等核心业务逻辑 |
+| 2026-03-15 | Plan 04-03完成 | BookingController实现，包含9个预订管理REST API端点，权限控制集成，BookingMapper和异常类创建 |
+| 2026-03-15 | Plan 04-04部分完成 | 前端booking.ts API工具文件创建，后端Service和Controller层已完成，前端组件集成待完成 |
 
 ## Project Context
 
