@@ -4,16 +4,19 @@ import { ElMessage } from 'element-plus'
 import Layout from '../components/Layout.vue'
 import { settingsApi } from '../api/settings'
 import { getRooms } from '../api/room'
+import { getActiveRoomTypes, updateRoomType } from '../api/roomType'
 import type { RoomTypeConfig, RoomTypeWithStats } from '../types/settings'
 import type { RoomResponse } from '../types/room'
+import type { RoomTypeResponse } from '../types/roomType'
 import { getUser } from '@/utils/auth'
 
 const activeTab = ref('types')
 const loading = ref(false)
 const roomTypesWithStats = ref<RoomTypeWithStats[]>([])
+const roomTypesList = ref<RoomTypeResponse[]>([])
 const rooms = ref<RoomResponse[]>([])
 const editDialogVisible = ref(false)
-const editingRoomType = ref<{ code: string } & RoomTypeConfig | null>(null)
+const editingRoomType = ref<{ id: number; code: string } & RoomTypeConfig | null>(null)
 
 const searchQuery = ref('')
 const filterFloor = ref('')
@@ -30,14 +33,17 @@ const roomTypeCodeNames: Record<string, string> = {
 const fetchRoomTypesConfig = async () => {
   loading.value = true
   try {
-    const config = await settingsApi.getRoomTypesConfig()
+    const response = await getActiveRoomTypes()
+    const roomTypes = response.data
+    roomTypesList.value = roomTypes
+
     const typesWithStats: RoomTypeWithStats[] = []
-    for (const [code, typeConfig] of Object.entries(config)) {
+    for (const rt of roomTypes) {
       try {
-        const stats = await settingsApi.getRoomTypeStats(code)
-        typesWithStats.push({ code, ...typeConfig, roomCount: stats.roomCount, availableCount: stats.availableCount })
+        const stats = await settingsApi.getRoomTypeStats(rt.code)
+        typesWithStats.push({ code: rt.code, name: rt.name, capacity: rt.capacity, basePrice: rt.basePrice, roomCount: stats.roomCount, availableCount: stats.availableCount })
       } catch {
-        typesWithStats.push({ code, ...typeConfig, roomCount: 0, availableCount: 0 })
+        typesWithStats.push({ code: rt.code, name: rt.name, capacity: rt.capacity, basePrice: rt.basePrice, roomCount: 0, availableCount: 0 })
       }
     }
     roomTypesWithStats.value = typesWithStats
@@ -49,9 +55,10 @@ const fetchRoomTypesConfig = async () => {
 }
 
 const handleEditRoomType = (code: string) => {
+  const roomType = roomTypesList.value.find(rt => rt.code === code)
   const config = roomTypesWithStats.value.find(t => t.code === code)
-  if (config) {
-    editingRoomType.value = { code: config.code, name: config.name, capacity: config.capacity, basePrice: config.basePrice }
+  if (roomType && config) {
+    editingRoomType.value = { id: roomType.id, code: config.code, name: config.name, capacity: config.capacity, basePrice: config.basePrice }
     editDialogVisible.value = true
   }
 }
@@ -60,10 +67,8 @@ const handleSaveRoomType = async () => {
   if (!editingRoomType.value) return
   loading.value = true
   try {
-    const { code, ...config } = editingRoomType.value
-    const allConfig = Object.fromEntries(roomTypesWithStats.value.map(t => [t.code, { name: t.name, capacity: t.capacity, basePrice: t.basePrice }]))
-    allConfig[code] = config
-    await settingsApi.updateRoomTypesConfig(allConfig)
+    const { id, code, name, capacity, basePrice } = editingRoomType.value
+    await updateRoomType(id, { code, name, capacity, basePrice })
     ElMessage.success('更新成功')
     editDialogVisible.value = false
     await fetchRoomTypesConfig()

@@ -33,4 +33,10 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
      * 统计指定状态的房间数量
      */
     Long countByStatus(RoomStatus status);
+
+    /**
+     * 统计指定类型的房间数量
+     */
+    @Query(value = "SELECT COUNT(*) FROM rooms WHERE type = :typeName", nativeQuery = true)
+    Long countByType(@Param("typeName") String typeName);
 }
