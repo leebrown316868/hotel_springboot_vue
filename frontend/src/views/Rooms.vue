@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import Layout from '../components/Layout.vue'
@@ -11,12 +11,16 @@ import {
   deleteRoom,
   updateRoomStatus
 } from '@/api/room'
+import { settingsApi } from '@/api/settings'
 import type { RoomResponse, RoomRequest } from '@/types/room'
+import type { RoomTypeConfig } from '@/types/settings'
+import { getUser } from '@/utils/auth'
 
 const loading = ref(false)
 const saving = ref(false)
 const searchQuery = ref('')
 const filterFloor = ref('')
+const filterType = ref('')
 const filterStatus = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -24,6 +28,7 @@ const total = ref(0)
 const totalPages = ref(0)
 
 const rooms = ref<RoomResponse[]>([])
+const roomTypesConfig = ref<Record<string, RoomTypeConfig>>({})
 
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
@@ -39,13 +44,18 @@ const roomForm = ref<RoomRequest>({
   capacity: 1
 })
 
-const roomTypeOptions = [
-  { label: '单人间', value: 'SINGLE' },
-  { label: '双人间', value: 'DOUBLE' },
-  { label: '套房', value: 'SUITE' },
-  { label: '行政套房', value: 'EXECUTIVE_SUITE' },
-  { label: '总统套房', value: 'PRESIDENTIAL_SUITE' }
-]
+// 动态房型选项，从系统设置获取
+const roomTypeOptions = computed(() => {
+  return Object.entries(roomTypesConfig.value).map(([code, config]) => ({
+    label: config.name,
+    value: code
+  }))
+})
+
+// 表格 key，用于房型配置更新时强制重新渲染
+const tableKey = computed(() => {
+  return Object.keys(roomTypesConfig.value).length
+})
 
 const roomStatusOptions = [
   { label: '空闲', value: 'AVAILABLE' },
@@ -53,6 +63,13 @@ const roomStatusOptions = [
   { label: '清洁中', value: 'CLEANING' },
   { label: '维修中', value: 'MAINTENANCE' }
 ]
+
+const canCreateRoom = computed(() => {
+  const role = getUser()?.role
+  return role === 'ADMIN' || role === 'STAFF'
+})
+
+const isAdmin = computed(() => getUser()?.role === 'ADMIN')
 
 const fetchRooms = async () => {
   loading.value = true
@@ -62,6 +79,7 @@ const fetchRooms = async () => {
       size: pageSize.value,
       number: searchQuery.value || undefined,
       floor: filterFloor.value || undefined,
+      type: filterType.value || undefined,
       status: filterStatus.value || undefined
     })
 
@@ -85,9 +103,21 @@ const fetchRooms = async () => {
   }
 }
 
+const fetchRoomTypesConfig = async () => {
+  try {
+    roomTypesConfig.value = await settingsApi.getRoomTypesConfig()
+    // 配置加载完成后，重新渲染房间列表以更新房型名称显示
+    // 通过触发一个微小的更新来强制重新渲染
+    rooms.value = [...rooms.value]
+  } catch (error) {
+    console.error('Failed to fetch room types config:', error)
+  }
+}
+
 const resetFilters = () => {
   searchQuery.value = ''
   filterFloor.value = ''
+  filterType.value = ''
   filterStatus.value = ''
   currentPage.value = 1
   fetchRooms()
@@ -101,12 +131,30 @@ const handleCreate = () => {
     type: '',
     status: 'AVAILABLE',
     price: 0,
-    capacity: 1
+    capacity: 1 // 默认值，实际会从房型配置获取
   }
   dialogVisible.value = true
 }
 
-const handleEdit = (row: RoomResponse) => {
+// 监听房型变化，自动填充容量和默认价格（仅在创建新房间时）
+watch(() => roomForm.value.type, (newType, oldType) => {
+  if (newType && roomTypesConfig.value[newType]) {
+    const config = roomTypesConfig.value[newType]
+    // 容量始终从房型配置获取
+    roomForm.value.capacity = config.capacity
+
+    // 只在创建模式且房型从空变为有值时自动填充价格
+    // 编辑模式或不改变房型时，保持原有价格不变
+    if (dialogMode.value === 'create' && !oldType) {
+      roomForm.value.price = config.basePrice
+    }
+  }
+})
+
+const handleEdit = async (row: RoomResponse) => {
+  // 每次打开编辑对话框时重新获取最新的房型配置，确保与数据库同步
+  await fetchRoomTypesConfig()
+
   dialogMode.value = 'edit'
   currentRoom.value = row
   roomForm.value = {
@@ -170,7 +218,7 @@ const handleStatusChange = async (row: RoomResponse, newStatus: string) => {
     const response = await updateRoomStatus(row.id, newStatus)
     if (response.code === 200) {
       ElMessage.success('状态更新成功')
-      fetchRooms()
+      await fetchRooms()
     }
   } catch (error) {
     console.error('Failed to update room status:', error)
@@ -195,7 +243,8 @@ const submitForm = async () => {
       if (response.code === 200) {
         ElMessage.success('更新成功')
         dialogVisible.value = false
-        fetchRooms()
+        // 刷新房间列表和房型配置，确保显示最新的数据
+        await Promise.all([fetchRooms(), fetchRoomTypesConfig()])
       }
     }
   } catch (error) {
@@ -227,14 +276,7 @@ const getStatusLabel = (status: string) => {
 }
 
 const getTypeLabel = (type: string) => {
-  switch(type) {
-    case 'SINGLE': return '单人间'
-    case 'DOUBLE': return '双人间'
-    case 'SUITE': return '套房'
-    case 'EXECUTIVE_SUITE': return '行政套房'
-    case 'PRESIDENTIAL_SUITE': return '总统套房'
-    default: return type
-  }
+  return roomTypesConfig.value[type]?.name || type
 }
 
 const formatDate = (dateString: string) => {
@@ -247,8 +289,25 @@ watch([currentPage, pageSize], () => {
   fetchRooms()
 })
 
-onMounted(() => {
+// 监听房型配置更新事件的处理函数
+const handleStorageChange = (e: StorageEvent) => {
+  if (e.key === 'room-types-config-updated' && e.newValue) {
+    fetchRoomTypesConfig()
+  }
+}
+
+onMounted(async () => {
+  // 先加载房型配置，再加载房间列表
+  await fetchRoomTypesConfig()
   fetchRooms()
+
+  // 监听房型配置更新事件
+  window.addEventListener('storage', handleStorageChange)
+})
+
+onUnmounted(() => {
+  // 清理事件监听器
+  window.removeEventListener('storage', handleStorageChange)
 })
 </script>
 
@@ -261,14 +320,14 @@ onMounted(() => {
           <p class="text-sm text-gray-500 mt-1">管理酒店库存、状态和定价</p>
         </div>
         <div class="flex items-center gap-3">
-          <el-button type="primary" size="large" class="flex items-center gap-2 shadow-sm" @click="handleCreate">
+          <el-button v-if="canCreateRoom" type="primary" size="large" class="flex items-center gap-2 shadow-sm" @click="handleCreate">
             <el-icon><Plus /></el-icon> 添加新客房
           </el-button>
         </div>
       </header>
 
       <section class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div class="flex flex-col gap-1">
             <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">搜索</label>
             <el-input v-model="searchQuery" placeholder="房间号..." clearable prefix-icon="Search" @input="currentPage = 1; fetchRooms()" />
@@ -282,6 +341,13 @@ onMounted(() => {
               <el-option label="3 楼" value="3" />
               <el-option label="4 楼" value="4" />
               <el-option label="5 楼" value="5" />
+            </el-select>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">房型</label>
+            <el-select v-model="filterType" placeholder="所有房型" clearable class="w-full" @change="currentPage = 1; fetchRooms()">
+              <el-option v-for="option in roomTypeOptions" :key="option.value" :label="option.label" :value="option.value" />
             </el-select>
           </div>
 
@@ -302,7 +368,7 @@ onMounted(() => {
       </section>
 
       <main class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <el-table :data="rooms" style="width: 100%" v-loading="loading">
+        <el-table :data="rooms" :key="tableKey" style="width: 100%" v-loading="loading">
           <el-table-column prop="number" label="房间号" sortable width="120">
             <template #default="scope">
               <span class="font-bold text-gray-700">{{ scope.row.number }}</span>
@@ -316,6 +382,11 @@ onMounted(() => {
           <el-table-column prop="type" label="房型">
             <template #default="scope">
               <span class="text-gray-600">{{ getTypeLabel(scope.row.type) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="capacity" label="容量" width="100">
+            <template #default="scope">
+              <span class="text-gray-600">{{ scope.row.capacity }} 人</span>
             </template>
           </el-table-column>
           <el-table-column prop="status" label="状态" width="150">
@@ -340,7 +411,7 @@ onMounted(() => {
               <div class="flex justify-end gap-2">
                 <el-button size="small" @click="handleView(scope.row)">查看</el-button>
                 <el-button size="small" type="primary" plain @click="handleEdit(scope.row)">编辑</el-button>
-                <el-button size="small" type="danger" plain @click="handleDelete(scope.row)">删除</el-button>
+                <el-button v-if="isAdmin" size="small" type="danger" plain @click="handleDelete(scope.row)">删除</el-button>
               </div>
             </template>
           </el-table-column>
@@ -374,6 +445,9 @@ onMounted(() => {
             <el-select v-model="roomForm.type" placeholder="请选择房型" class="w-full">
               <el-option v-for="option in roomTypeOptions" :key="option.value" :label="option.label" :value="option.value" />
             </el-select>
+            <div v-if="roomForm.type && roomTypesConfig.value && roomTypesConfig.value[roomForm.type]" class="text-xs text-gray-500 mt-1">
+              容量：{{ roomTypesConfig.value[roomForm.type]?.capacity || 0 }} 人（由房型配置决定）
+            </div>
           </el-form-item>
           <el-form-item label="状态" required>
             <el-select v-model="roomForm.status" placeholder="请选择状态" class="w-full">
@@ -381,10 +455,21 @@ onMounted(() => {
             </el-select>
           </el-form-item>
           <el-form-item label="价格" required>
-            <el-input-number v-model="roomForm.price" :min="0" :precision="2" class="w-full" />
-          </el-form-item>
-          <el-form-item label="容量" required>
-            <el-input-number v-model="roomForm.capacity" :min="1" :max="10" class="w-full" />
+            <el-input-number
+              v-model="roomForm.price"
+              :min="0"
+              :precision="2"
+              :disabled="!isAdmin"
+              class="w-full"
+            />
+            <div class="text-xs text-gray-500 mt-1">
+              <template v-if="isAdmin">
+                可手动调整房间价格（创建时默认使用房型配置价格）
+              </template>
+              <template v-else>
+                房间价格由管理员设定，当前显示价格
+              </template>
+            </div>
           </el-form-item>
         </el-form>
         <template #footer>

@@ -5,9 +5,11 @@ import com.hotel.entity.RoomStatus;
 import com.hotel.entity.RoomType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -39,4 +41,12 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
      */
     @Query(value = "SELECT COUNT(*) FROM rooms WHERE type = :typeName", nativeQuery = true)
     Long countByType(@Param("typeName") String typeName);
+
+    /**
+     * 批量更新指定房型所有房间的价格
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE rooms SET price = :price, updated_at = datetime('now') WHERE type = :typeName", nativeQuery = true)
+    void updatePriceByType(@Param("typeName") String typeName, @Param("price") java.math.BigDecimal price);
 }

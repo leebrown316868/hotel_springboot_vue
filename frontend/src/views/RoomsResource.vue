@@ -72,6 +72,8 @@ const handleSaveRoomType = async () => {
     ElMessage.success('更新成功')
     editDialogVisible.value = false
     await fetchRoomTypesConfig()
+    // 通知其他页面房型配置已更新
+    localStorage.setItem('room-types-config-updated', Date.now().toString())
   } catch {
     ElMessage.error('更新失败')
   } finally {

@@ -59,15 +59,19 @@ const getRoleLabel = (role?: string): string => {
     'ADMIN': '系统管理员',
     'MANAGER': '物业经理',
     'RECEPTIONIST': '前台员工',
-    'GUEST': '住客'
+    'GUEST': '住客',
+    'STAFF': '前台员工',
+    'CUSTOMER': '客户'
   }
   return role ? (roleMap[role] || role) : '访客'
 }
 
-const menuItems = [
+// 所有菜单项配置
+const allMenuItems = [
   {
     label: '前台员工模块',
     icon: 'Avatar',
+    roles: ['ADMIN', 'STAFF'],
     children: [
       { path: '/rooms', label: '客房管理', icon: 'House' },
       { path: '/staff-bookings', label: '订单管理', icon: 'List' },
@@ -77,6 +81,7 @@ const menuItems = [
   {
     label: '管理员模块',
     icon: 'Setting',
+    roles: ['ADMIN'],
     children: [
       { path: '/settings', label: '系统管理', icon: 'Tools' },
       { path: '/rooms-resource', label: '客房资源管理', icon: 'OfficeBuilding' },
@@ -85,8 +90,9 @@ const menuItems = [
     ]
   },
   {
-    label: '用户模块 (顾客/住客端)',
+    label: '用户模块',
     icon: 'UserFilled',
+    roles: ['ADMIN', 'CUSTOMER'],
     children: [
       { path: '/browse-rooms', label: '房间浏览与搜索', icon: 'Search' },
       { path: '/bookings/new', label: '在线预订与支付', icon: 'ShoppingCart' },
@@ -96,6 +102,15 @@ const menuItems = [
     ]
   }
 ]
+
+// 根据当前用户角色过滤菜单项
+const menuItems = computed(() => {
+  const userRole = currentUser.value?.role
+
+  if (!userRole) return []
+
+  return allMenuItems.filter(module => module.roles.includes(userRole))
+})
 </script>
 
 <template>
