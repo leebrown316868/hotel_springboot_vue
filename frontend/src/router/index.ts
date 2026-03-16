@@ -62,6 +62,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/room-types',
+      name: 'room-types',
+      component: () => import('../views/RoomTypes.vue'),
+      meta: { requiresAuth: true, roles: ['ADMIN', 'STAFF'] }
+    },
+    {
       path: '/browse-rooms',
       name: 'browse-rooms',
       component: () => import('../views/BrowseRooms.vue')

@@ -43,6 +43,7 @@ export interface RoomQueryParams {
   size?: number
   number?: string
   floor?: string
+  type?: string
   status?: string
 }
 

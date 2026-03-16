@@ -51,5 +51,5 @@ export interface RoomSearchRequest {
   checkInDate: string
   checkOutDate: string
   guestCount: number
-  roomTypes?: string[]
+  roomTypesStr?: string // 逗号分隔的房型字符串，如："DOUBLE,EXECUTIVE_SUITE"
 }

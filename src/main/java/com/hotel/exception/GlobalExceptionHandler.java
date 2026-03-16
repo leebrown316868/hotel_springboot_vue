@@ -165,6 +165,30 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
     }
 
+    @ExceptionHandler(RoomTypeNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRoomTypeNotFoundException(RoomTypeNotFoundException ex) {
+        log.error("Room type not found exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(RoomTypeAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRoomTypeAlreadyExistsException(RoomTypeAlreadyExistsException ex) {
+        log.error("Room type already exists exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(HttpStatus.CONFLICT.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(RoomTypeInUseException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRoomTypeInUseException(RoomTypeInUseException ex) {
+        log.error("Room type in use exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
         log.error("Illegal argument exception: {}", ex.getMessage());

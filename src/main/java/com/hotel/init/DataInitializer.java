@@ -5,11 +5,13 @@ import com.hotel.entity.GuestStatus;
 import com.hotel.entity.Room;
 import com.hotel.entity.RoomStatus;
 import com.hotel.entity.RoomType;
+import com.hotel.entity.RoomTypeEntity;
 import com.hotel.entity.SystemSettings;
 import com.hotel.entity.User;
 import com.hotel.entity.UserRole;
 import com.hotel.repository.GuestRepository;
 import com.hotel.repository.RoomRepository;
+import com.hotel.repository.RoomTypeRepository;
 import com.hotel.repository.SystemSettingsRepository;
 import com.hotel.repository.UserRepository;
 import org.slf4j.Logger;
@@ -54,6 +56,9 @@ public class DataInitializer {
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private RoomTypeRepository roomTypeRepository;
+
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void initializeData() {
@@ -67,6 +72,9 @@ public class DataInitializer {
 
         // Create staff account
         createStaffAccount();
+
+        // Initialize room types
+        initializeRoomTypes();
 
         // Initialize room data
         initializeRooms();
@@ -118,6 +126,40 @@ public class DataInitializer {
 
         userRepository.save(staff);
         logger.info("Staff account created successfully: {}", email);
+    }
+
+    private void initializeRoomTypes() {
+        if (roomTypeRepository.count() > 0) {
+            logger.info("Room type data already exists, skipping initialization");
+            return;
+        }
+
+        logger.info("Initializing room type data...");
+
+        createRoomType("SINGLE", "单人间", 1, new BigDecimal("85"));
+        createRoomType("DOUBLE", "双人间", 2, new BigDecimal("120"));
+        createRoomType("SUITE", "套房", 4, new BigDecimal("250"));
+        createRoomType("EXECUTIVE_SUITE", "行政套房", 2, new BigDecimal("450"));
+        createRoomType("PRESIDENTIAL_SUITE", "总统套房", 2, new BigDecimal("880"));
+
+        logger.info("Room type data initialized successfully: 5 room types created");
+    }
+
+    private void createRoomType(String code, String name, int capacity, BigDecimal basePrice) {
+        if (roomTypeRepository.existsByCode(code)) {
+            logger.debug("Room type already exists: {}", code);
+            return;
+        }
+
+        RoomTypeEntity roomType = RoomTypeEntity.builder()
+                .code(code)
+                .name(name)
+                .capacity(capacity)
+                .basePrice(basePrice)
+                .active(true)
+                .build();
+        roomTypeRepository.save(roomType);
+        logger.debug("Room type created: {} - {}", code, name);
     }
 
     private void initializeRooms() {
@@ -275,6 +317,29 @@ public class DataInitializer {
                 logger.debug("room_types_config column already exists in system_settings table");
             }
             rs2.close();
+
+            // Check if room_types table exists
+            ResultSet rs3 = conn.getMetaData().getTables(null, null, "room_types", null);
+            if (!rs3.next()) {
+                logger.info("Creating room_types table...");
+                conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS room_types (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "code VARCHAR NOT NULL UNIQUE, " +
+                    "name VARCHAR NOT NULL, " +
+                    "capacity INTEGER NOT NULL, " +
+                    "base_price DECIMAL NOT NULL, " +
+                    "active INTEGER NOT NULL DEFAULT 1, " +
+                    "created_at TIMESTAMP NOT NULL, " +
+                    "updated_at TIMESTAMP NOT NULL)"
+                );
+                conn.createStatement().executeUpdate("CREATE INDEX IF NOT EXISTS idx_room_types_code ON room_types(code)");
+                conn.createStatement().executeUpdate("CREATE INDEX IF NOT EXISTS idx_room_types_active ON room_types(active)");
+                logger.info("room_types table created successfully");
+            } else {
+                logger.debug("room_types table already exists");
+            }
+            rs3.close();
         } catch (Exception e) {
             logger.warn("Database migration failed (may already exist): {}", e.getMessage());
         }

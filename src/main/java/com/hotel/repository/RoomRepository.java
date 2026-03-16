@@ -49,4 +49,12 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
     @Transactional
     @Query(value = "UPDATE rooms SET price = :price, updated_at = datetime('now') WHERE type = :typeName", nativeQuery = true)
     void updatePriceByType(@Param("typeName") String typeName, @Param("price") java.math.BigDecimal price);
+
+    /**
+     * 批量更新指定房型所有房间的容量
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE rooms SET capacity = :capacity, updated_at = datetime('now') WHERE type = :typeName", nativeQuery = true)
+    void updateCapacityByType(@Param("typeName") String typeName, @Param("capacity") Integer capacity);
 }

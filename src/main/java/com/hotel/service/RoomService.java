@@ -1,7 +1,6 @@
 package com.hotel.service;
 
 import com.hotel.dto.RoomListResponse;
-import com.hotel.dto.RemoteRequest;
 import com.hotel.dto.RoomRequest;
 import com.hotel.dto.RoomResponse;
 import com.hotel.dto.RoomTypeStats;

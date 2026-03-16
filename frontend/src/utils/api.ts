@@ -1,12 +1,28 @@
 import axios, { AxiosError } from 'axios'
 import { ElMessage } from 'element-plus'
 
+// 自定义参数序列化器，将数组参数序列化为逗号分隔的字符串
+const paramsSerializer = (params: any) => {
+  return Object.keys(params)
+    .map(key => {
+      const value = params[key]
+      if (value === null || value === undefined) return ''
+      if (Array.isArray(value)) {
+        return `${key}=${value.join(',')}`
+      }
+      return `${key}=${encodeURIComponent(value)}`
+    })
+    .filter(Boolean)
+    .join('&')
+}
+
 const api = axios.create({
   baseURL: 'http://localhost:8080',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  paramsSerializer: paramsSerializer
 })
 
 // Request interceptor

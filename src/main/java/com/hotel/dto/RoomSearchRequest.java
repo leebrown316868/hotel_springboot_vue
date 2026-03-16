@@ -10,6 +10,7 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -31,5 +32,18 @@ public class RoomSearchRequest {
     @Min(value = 1, message = "入住人数至少为1人")
     private Integer guestCount;
 
-    private List<RoomType> roomTypes;
+    // 接收逗号分隔的房型字符串（如："DOUBLE,EXECUTIVE_SUITE"）
+    private String roomTypesStr;
+
+    // 获取房型列表（将字符串转换为枚举列表）
+    public List<RoomType> getRoomTypes() {
+        if (roomTypesStr == null || roomTypesStr.trim().isEmpty()) {
+            return null;
+        }
+        return List.of(roomTypesStr.split(","))
+                .stream()
+                .map(String::trim)
+                .map(RoomType::valueOf)
+                .collect(Collectors.toList());
+    }
 }

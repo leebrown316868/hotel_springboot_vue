@@ -1,6 +1,7 @@
 import api from '@/utils/api'
 import type { Settings, SettingsRequest, RoomTypeConfig, RoomTypeStats } from '@/types/settings'
 import type { ApiResponse } from '@/types/api'
+import type { RoomTypeResponse } from '@/types/roomType'
 
 export const settingsApi = {
   // 获取系统设置
@@ -15,10 +16,21 @@ export const settingsApi = {
     return response.data.data
   },
 
-  // 获取房型配置
+  // 获取房型配置 - 从数据库的 room_types 表读取
   getRoomTypesConfig: async (): Promise<Record<string, RoomTypeConfig>> => {
-    const response = await api.get<ApiResponse<Record<string, RoomTypeConfig>>>('/api/settings/room-types')
-    return response.data.data
+    const response = await api.get<ApiResponse<RoomTypeResponse[]>>('/api/room-types/active')
+    const roomTypes = response.data.data
+
+    // 将 RoomTypeResponse 数组转换为 Record<string, RoomTypeConfig> 格式
+    const config: Record<string, RoomTypeConfig> = {}
+    for (const rt of roomTypes) {
+      config[rt.code] = {
+        name: rt.name,
+        capacity: rt.capacity,
+        basePrice: rt.basePrice
+      }
+    }
+    return config
   },
 
   // 更新房型配置

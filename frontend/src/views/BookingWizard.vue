@@ -3,7 +3,9 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { searchAvailableRooms, createBooking, processPayment } from '@/api/booking'
+import { settingsApi } from '@/api/settings'
 import type { RoomResponse, BookingResponse } from '@/types/booking'
+import type { RoomTypeConfig } from '@/types/settings'
 
 const router = useRouter()
 const activeStep = ref(1)
@@ -12,6 +14,7 @@ const selectedRoom = ref<RoomResponse | null>(null)
 const currentBooking = ref<BookingResponse | null>(null)
 const loading = ref(false)
 const paymentLoading = ref(false)
+const roomTypesConfig = ref<Record<string, RoomTypeConfig>>({})
 
 const searchData = reactive({
   dateRange: [new Date(), new Date(Date.now() + (3 * 24 * 60 * 60 * 1000))],
@@ -78,15 +81,41 @@ const getRoomImage = (roomType: string) => {
   return images[roomType] || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&q=80&w=800'
 }
 
+// 获取房型配置
+const fetchRoomTypesConfig = async () => {
+  try {
+    roomTypesConfig.value = await settingsApi.getRoomTypesConfig()
+  } catch (error) {
+    console.error('Failed to fetch room types config:', error)
+  }
+}
+
+// 动态房型选项
+const roomTypeOptions = computed(() => {
+  return Object.entries(roomTypesConfig.value).map(([code, config]) => ({
+    label: config.name,
+    value: code,
+    capacity: config.capacity,
+    basePrice: config.basePrice
+  }))
+})
+
+// 动态入住人数选项，基于房型最大容量
+const guestOptions = computed(() => {
+  const maxCapacity = Math.max(...Object.values(roomTypesConfig.value).map(config => config.capacity), 4)
+  const options = []
+  for (let i = 1; i <= maxCapacity; i++) {
+    options.push({
+      label: `${i} 位`,
+      value: String(i)
+    })
+  }
+  return options
+})
+
 // 获取房间类型中文名
 const getRoomTypeName = (type: string) => {
-  const names: Record<string, string> = {
-    'SINGLE': '标准间',
-    'DOUBLE': '豪华间',
-    'SUITE': '套房',
-    'DELUXE': '总统套房'
-  }
-  return names[type] || type
+  return roomTypesConfig.value[type]?.name || type
 }
 
 // 获取房间类别
@@ -95,20 +124,15 @@ const getRoomCategory = (type: string) => {
     'SINGLE': '标准',
     'DOUBLE': '豪华',
     'SUITE': '套房',
-    'DELUXE': '奢华'
+    'EXECUTIVE_SUITE': '行政',
+    'PRESIDENTIAL_SUITE': '奢华'
   }
   return categories[type] || '标准'
 }
 
 // 获取房间容量
 const getRoomCapacity = (type: string) => {
-  const capacities: Record<string, number> = {
-    'SINGLE': 1,
-    'DOUBLE': 2,
-    'SUITE': 4,
-    'DELUXE': 2
-  }
-  return capacities[type] || 2
+  return roomTypesConfig.value[type]?.capacity || 2
 }
 
 // 搜索可用房间
@@ -119,7 +143,7 @@ const handleSearch = async () => {
       checkInDate: formatSearchDate(searchData.dateRange[0]),
       checkOutDate: formatSearchDate(searchData.dateRange[1]),
       guestCount: parseInt(searchData.guests),
-      roomTypes: searchData.roomTypes.length > 0 ? searchData.roomTypes : undefined
+      roomTypesStr: searchData.roomTypes.length > 0 ? searchData.roomTypes.join(',') : undefined
     })
 
     if (response.data.code === 200 && response.data.data) {
@@ -220,7 +244,8 @@ const bookAgain = () => {
 }
 
 // 组件挂载时自动搜索
-onMounted(() => {
+onMounted(async () => {
+  await fetchRoomTypesConfig()
   handleSearch()
 })
 </script>
@@ -285,20 +310,14 @@ onMounted(() => {
               <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">入住人数</label>
                 <el-select v-model="searchData.guests" placeholder="请选择" class="w-full">
-                  <el-option label="1 位成人" value="1" />
-                  <el-option label="2 位成人" value="2" />
-                  <el-option label="2 位成人, 1 位儿童" value="2-1" />
-                  <el-option label="2 位成人, 2 位儿童" value="2-2" />
+                  <el-option v-for="option in guestOptions" :key="option.value" :label="option.label" :value="option.value" />
                 </el-select>
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">客房类型</label>
                 <el-checkbox-group v-model="searchData.roomTypes" class="flex flex-col gap-2">
-                  <el-checkbox label="标准间" value="SINGLE" />
-                  <el-checkbox label="豪华间" value="DOUBLE" />
-                  <el-checkbox label="套房" value="SUITE" />
-                  <el-checkbox label="总统套房" value="DELUXE" />
+                  <el-checkbox v-for="option in roomTypeOptions" :key="option.value" :label="option.label" :value="option.value" />
                 </el-checkbox-group>
               </div>
 

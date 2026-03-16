@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import Layout from '../components/Layout.vue'
 import * as echarts from 'echarts'
@@ -16,6 +17,8 @@ import type {
   RecentBookingSummary
 } from '@/types/statistics'
 
+const router = useRouter()
+
 const statusChartRef = ref<HTMLElement | null>(null)
 const trendsChartRef = ref<HTMLElement | null>(null)
 let statusChart: echarts.ECharts | null = null
@@ -26,6 +29,12 @@ const roomStatusData = ref<RoomStatusDistribution[]>([])
 const bookingTrendData = ref<BookingTrendData[]>([])
 const recentBookings = ref<RecentBookingSummary[]>([])
 const loading = ref(true)
+
+// 图表 resize 处理函数
+const handleResize = () => {
+  statusChart?.resize()
+  trendsChart?.resize()
+}
 
 const loadDashboardData = async () => {
   loading.value = true
@@ -41,8 +50,6 @@ const loadDashboardData = async () => {
     roomStatusData.value = statusRes.data.data
     bookingTrendData.value = trendsRes.data.data
     recentBookings.value = bookingsRes.data.data
-
-    updateCharts()
   } catch (error) {
     console.error('加载仪表板数据失败:', error)
     ElMessage.error('加载数据失败')
@@ -53,35 +60,68 @@ const loadDashboardData = async () => {
 
 const updateCharts = () => {
   // 更新客房状态分布饼图
-  if (statusChart && roomStatusData.value.length > 0) {
-    const statusData = roomStatusData.value.map(item => ({
-      value: item.count,
-      name: item.displayName,
-      itemStyle: {
-        color: getStatusColor(item.status)
-      }
-    }))
+  if (statusChart) {
+    // 确保 resize 以获取正确的容器尺寸
+    statusChart.resize()
 
-    statusChart.setOption({
-      series: [{
-        data: statusData
-      }]
-    })
+    if (roomStatusData.value.length > 0) {
+      const statusData = roomStatusData.value.map(item => ({
+        value: item.count,
+        name: item.displayName,
+        itemStyle: {
+          color: getStatusColor(item.status)
+        }
+      }))
+
+      statusChart.setOption({
+        series: [{
+          data: statusData
+        }],
+        legend: {
+          data: roomStatusData.value.map(item => item.displayName)
+        }
+      })
+    } else {
+      // 数据为空时显示空状态
+      statusChart.setOption({
+        series: [{
+          data: []
+        }],
+        legend: {
+          data: []
+        }
+      })
+    }
   }
 
   // 更新预订趋势折线图
-  if (trendsChart && bookingTrendData.value.length > 0) {
-    const xAxisData = bookingTrendData.value.map(item => item.date)
-    const seriesData = bookingTrendData.value.map(item => item.count)
+  if (trendsChart) {
+    // 确保 resize 以获取正确的容器尺寸
+    trendsChart.resize()
 
-    trendsChart.setOption({
-      xAxis: {
-        data: xAxisData
-      },
-      series: [{
-        data: seriesData
-      }]
-    })
+    if (bookingTrendData.value.length > 0) {
+      const xAxisData = bookingTrendData.value.map(item => item.date)
+      const seriesData = bookingTrendData.value.map(item => item.count)
+
+      trendsChart.setOption({
+        xAxis: {
+          data: xAxisData
+        },
+        series: [{
+          data: seriesData
+        }]
+      })
+    } else {
+      // 数据为空时显示空状态
+      trendsChart.setOption({
+        xAxis: {
+          data: []
+        },
+        series: [{
+          data: []
+        }]
+      })
+    }
   }
 }
 
@@ -125,8 +165,27 @@ const getBookingStatusColor = (status: string): string => {
   return colors[status] || 'gray'
 }
 
+// 按钮点击处理函数
+const handleManageRooms = () => {
+  router.push('/rooms')
+}
+
+const handleCreateBooking = () => {
+  router.push('/bookings/new')
+}
+
 onMounted(async () => {
-  // 初始化图表
+  // 添加窗口 resize 监听
+  window.addEventListener('resize', handleResize)
+
+  // 先加载数据
+  await loadDashboardData()
+
+  // 数据加载完成后，等待 DOM 更新并初始化图表
+  await nextTick()
+  await nextTick() // 双重 nextTick 确保完全渲染
+
+  // 初始化客房状态图表
   if (statusChartRef.value) {
     statusChart = echarts.init(statusChartRef.value)
     statusChart.setOption({
@@ -144,6 +203,7 @@ onMounted(async () => {
     })
   }
 
+  // 初始化预订趋势图表
   if (trendsChartRef.value) {
     trendsChart = echarts.init(trendsChartRef.value)
     trendsChart.setOption({
@@ -179,7 +239,17 @@ onMounted(async () => {
     })
   }
 
-  await loadDashboardData()
+  // 初始化后更新图表数据
+  updateCharts()
+})
+
+onBeforeUnmount(() => {
+  // 移除窗口 resize 监听
+  window.removeEventListener('resize', handleResize)
+
+  // 销毁图表实例
+  statusChart?.dispose()
+  trendsChart?.dispose()
 })
 </script>
 
@@ -196,10 +266,10 @@ onMounted(async () => {
           <p class="text-slate-500">欢迎回来，这是今天的实时数据。</p>
         </div>
         <div class="flex gap-3">
-          <button class="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+          <button @click="handleManageRooms" class="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 bg-white rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
             <el-icon><Setting /></el-icon> 管理客房
           </button>
-          <button class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
+          <button @click="handleCreateBooking" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200">
             <el-icon><Plus /></el-icon> 创建新预订
           </button>
         </div>
@@ -258,7 +328,7 @@ onMounted(async () => {
             客房状态分布
             <el-icon class="text-slate-400"><InfoFilled /></el-icon>
           </h3>
-          <div ref="statusChartRef" class="w-full h-64"></div>
+          <div ref="statusChartRef" style="width: 100%; height: 280px;"></div>
         </div>
 
         <div class="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -269,7 +339,7 @@ onMounted(async () => {
               <option>月视图</option>
             </select>
           </div>
-          <div ref="trendsChartRef" class="w-full h-64"></div>
+          <div ref="trendsChartRef" style="width: 100%; height: 280px;"></div>
         </div>
       </div>
 

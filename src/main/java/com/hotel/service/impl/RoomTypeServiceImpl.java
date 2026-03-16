@@ -102,9 +102,10 @@ public class RoomTypeServiceImpl implements RoomTypeService {
         RoomTypeEntity roomType = roomTypeRepository.findById(id)
                 .orElseThrow(() -> new RoomTypeNotFoundException(id));
 
-        // 保存旧的房型代码和价格，用于后续同步
+        // 保存旧的房型代码、价格和容量，用于后续同步
         String oldCode = roomType.getCode();
         java.math.BigDecimal oldPrice = roomType.getBasePrice();
+        Integer oldCapacity = roomType.getCapacity();
 
         // Check if code already exists for another room type
         if (roomTypeRepository.existsByCodeAndIdNot(request.getCode(), id)) {
@@ -125,6 +126,15 @@ public class RoomTypeServiceImpl implements RoomTypeService {
                     oldPrice, newPrice, updatedRoomType.getCode());
             roomRepository.updatePriceByType(updatedRoomType.getCode(), newPrice);
             log.info("Updated prices for all rooms of type {}", updatedRoomType.getCode());
+        }
+
+        // 如果容量发生了变化，同步更新所有关联房间的容量
+        Integer newCapacity = request.getCapacity();
+        if (newCapacity != null && oldCapacity != null && !oldCapacity.equals(newCapacity)) {
+            log.info("Capacity changed from {} to {}, updating all rooms of type {}",
+                    oldCapacity, newCapacity, updatedRoomType.getCode());
+            roomRepository.updateCapacityByType(updatedRoomType.getCode(), newCapacity);
+            log.info("Updated capacity for all rooms of type {}", updatedRoomType.getCode());
         }
 
         log.info("Room type updated successfully: {}", updatedRoomType.getId());

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Dashboard API Test</h1>
+    <div id="result"></div>
+
+    <script>
+        const api = axios.create({
+            baseURL: 'http://localhost:8080',
+            timeout: 10000,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // 添加请求拦截器
+        api.interceptors.request.use(config => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+            console.log('Request:', config.method.toUpperCase(), config.url);
+            return config;
+        });
+
+        // 测试函数
+        async function testDashboard() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+
+            try {
+                // 1. 检查是否有 token
+                const token = localStorage.getItem('token');
+                resultDiv.innerHTML += `<p>Token in localStorage: ${token ? 'YES' : 'NO'}</p>`;
+
+                if (!token) {
+                    resultDiv.innerHTML += '<p style="color: orange;">No token found, logging in...</p>';
+
+                    // 登录
+                    const loginResponse = await api.post('/api/auth/login', {
+                        email: 'admin@hotel.com',
+                        password: 'admin123'
+                    });
+
+                    console.log('Login response:', loginResponse.data);
+
+                    if (loginResponse.data.code === 200 && loginResponse.data.data.token) {
+                        localStorage.setItem('token', loginResponse.data.data.token);
+                        resultDiv.innerHTML += '<p style="color: green;">Login successful! Token saved.</p>';
+                    }
+                }
+
+                // 2. 获取 dashboard 数据
+                resultDiv.innerHTML += '<p>Fetching dashboard data...</p>';
+                const dashboardResponse = await api.get('/api/statistics/dashboard');
+
+                console.log('Dashboard response:', dashboardResponse.data);
+
+                resultDiv.innerHTML += '<h2 style="color: green;">Dashboard Data:</h2>';
+                resultDiv.innerHTML += '<pre>' + JSON.stringify(dashboardResponse.data, null, 2) + '</pre>';
+
+                // 3. 获取其他数据
+                resultDiv.innerHTML += '<p>Fetching room status data...</p>';
+                const roomStatusResponse = await api.get('/api/statistics/room-status');
+                resultDiv.innerHTML += '<h2 style="color: green;">Room Status Data:</h2>';
+                resultDiv.innerHTML += '<pre>' + JSON.stringify(roomStatusResponse.data, null, 2) + '</pre>';
+
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML += '<h2 style="color: red;">Error:</h2>';
+                resultDiv.innerHTML += '<pre>' + JSON.stringify(error.response?.data || error.message, null, 2) + '</pre>';
+            }
+        }
+
+        // 页面加载后执行测试
+        window.addEventListener('load', testDashboard);
+    </script>
+</body>
+</html>
