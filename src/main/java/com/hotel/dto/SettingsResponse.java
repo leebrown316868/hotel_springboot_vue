@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public class SettingsResponse {
     private Long id;
     private String hotelName;
+    private String description;
     private String contactEmail;
     private String contactPhone;
     private String address;
