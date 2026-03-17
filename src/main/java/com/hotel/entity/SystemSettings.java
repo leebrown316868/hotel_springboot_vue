@@ -29,6 +29,9 @@ public class SystemSettings {
     @Column(length = 200)
     private String address = "123 Ocean Drive, Miami, FL 33139";
 
+    @Column(length = 1000)
+    private String description = "欢迎来到 GrandHotel 豪华酒店，我们致力于为您提供最舒适的住宿体验。";
+
     @Column(nullable = false, length = 10)
     private String currency = "CNY";
 
