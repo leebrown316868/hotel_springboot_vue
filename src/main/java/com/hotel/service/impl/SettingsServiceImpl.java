@@ -2,6 +2,7 @@ package com.hotel.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hotel.dto.PublicSettingsResponse;
 import com.hotel.dto.RoomTypeConfig;
 import com.hotel.dto.SettingsRequest;
 import com.hotel.dto.SettingsResponse;
@@ -82,5 +83,17 @@ public class SettingsServiceImpl implements SettingsService {
         config.put("EXECUTIVE_SUITE", new RoomTypeConfig("行政套房", 3, new BigDecimal("500")));
         config.put("PRESIDENTIAL_SUITE", new RoomTypeConfig("总统套房", 4, new BigDecimal("850")));
         return config;
+    }
+
+    @Override
+    public PublicSettingsResponse getPublicSettings() {
+        SystemSettings settings = repository.getSingleton();
+        return PublicSettingsResponse.builder()
+                .hotelName(settings.getHotelName())
+                .description(settings.getDescription())
+                .address(settings.getAddress())
+                .contactPhone(settings.getContactPhone())
+                .contactEmail(settings.getContactEmail())
+                .build();
     }
 }
