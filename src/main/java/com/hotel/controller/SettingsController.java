@@ -1,6 +1,7 @@
 package com.hotel.controller;
 
 import com.hotel.dto.ApiResponse;
+import com.hotel.dto.PublicSettingsResponse;
 import com.hotel.dto.RoomTypeConfig;
 import com.hotel.dto.RoomTypeStats;
 import com.hotel.dto.SettingsRequest;
@@ -30,6 +31,12 @@ public class SettingsController {
     @GetMapping
     public ResponseEntity<ApiResponse<SettingsResponse>> getSettings() {
         SettingsResponse response = settingsService.getSettings();
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/public")
+    public ResponseEntity<ApiResponse<PublicSettingsResponse>> getPublicSettings() {
+        PublicSettingsResponse response = settingsService.getPublicSettings();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
