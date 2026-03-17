@@ -144,9 +144,11 @@ public class StatisticsServiceImpl implements StatisticsService {
     public List<RecentBookingSummary> getRecentBookings(int limit) {
         log.debug("获取最近{}条预订", limit);
 
-        // 获取最近的预订记录
+        // 获取最近的预订记录（按创建时间倒序）
         List<Booking> bookings = bookingRepository.findAll(
-                org.springframework.data.domain.PageRequest.of(0, limit)
+                org.springframework.data.domain.PageRequest.of(0, limit,
+                    org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Direction.DESC, "createdAt"))
         ).getContent();
 
         List<RecentBookingSummary> summaries = new ArrayList<>();

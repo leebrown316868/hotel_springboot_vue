@@ -219,14 +219,13 @@ public class DataInitializer {
                 capacity = 2;
         }
 
-        Room room = Room.builder()
-                .number(number)
-                .floor(floor)
-                .type(type)
-                .status(status)
-                .price(price)
-                .capacity(capacity)
-                .build();
+        Room room = new Room();
+        room.setNumber(number);
+        room.setFloor(floor);
+        room.setType(type);
+        room.setStatus(status);
+        room.setPrice(price);
+        room.setCapacity(capacity);
         roomRepository.save(room);
         logger.debug("Room created: {} - {} ({})", number, type.getDisplayName(), floor + "楼");
     }
@@ -340,6 +339,17 @@ public class DataInitializer {
                 logger.debug("room_types table already exists");
             }
             rs3.close();
+
+            // Check if images column exists in rooms table
+            ResultSet rs4 = conn.getMetaData().getColumns(null, null, "rooms", "images");
+            if (!rs4.next()) {
+                logger.info("Adding images column to rooms table...");
+                conn.createStatement().executeUpdate("ALTER TABLE rooms ADD COLUMN images TEXT");
+                logger.info("Images column added successfully");
+            } else {
+                logger.debug("Images column already exists in rooms table");
+            }
+            rs4.close();
         } catch (Exception e) {
             logger.warn("Database migration failed (may already exist): {}", e.getMessage());
         }

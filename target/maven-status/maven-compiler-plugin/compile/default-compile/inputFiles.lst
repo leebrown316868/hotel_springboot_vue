@@ -30,6 +30,7 @@ E:\project\hotel\src\main\java\com\hotel\exception\RoomTypeAlreadyExistsExceptio
 E:\project\hotel\src\main\java\com\hotel\service\impl\RoomServiceImpl.java
 E:\project\hotel\src\main\java\com\hotel\dto\BookingSummary.java
 E:\project\hotel\src\main\java\com\hotel\exception\RoomNotFoundException.java
+E:\project\hotel\src\main\java\com\hotel\migration\DatabaseMigration.java
 E:\project\hotel\src\main\java\com\hotel\service\impl\NotificationServiceImpl.java
 E:\project\hotel\src\main\java\com\hotel\dto\GuestResponse.java
 E:\project\hotel\src\main\java\com\hotel\exception\RoomNotAvailableException.java
@@ -68,6 +69,7 @@ E:\project\hotel\src\main\java\com\hotel\repository\BookingRepository.java
 E:\project\hotel\src\main\java\com\hotel\dto\AuthResponse.java
 E:\project\hotel\src\main\java\com\hotel\controller\RoomController.java
 E:\project\hotel\src\main\java\com\hotel\repository\UserRepository.java
+E:\project\hotel\src\main\java\com\hotel\config\FileUploadConfig.java
 E:\project\hotel\src\main\java\com\hotel\entity\PaymentStatus.java
 E:\project\hotel\src\main\java\com\hotel\service\RoomTypeService.java
 E:\project\hotel\src\main\java\com\hotel\repository\RoomRepository.java
@@ -106,6 +108,7 @@ E:\project\hotel\src\main\java\com\hotel\exception\GuestAlreadyExistsException.j
 E:\project\hotel\src\main\java\com\hotel\mapper\NotificationMapper.java
 E:\project\hotel\src\main\java\com\hotel\exception\SettingsNotFoundException.java
 E:\project\hotel\src\main\java\com\hotel\specification\GuestSpecification.java
+E:\project\hotel\src\main\java\com\hotel\dto\PublicSettingsResponse.java
 E:\project\hotel\src\main\java\com\hotel\dto\SettingsRequest.java
 E:\project\hotel\src\main\java\com\hotel\entity\Review.java
 E:\project\hotel\src\main\java\com\hotel\mapper\RoomTypeMapper.java

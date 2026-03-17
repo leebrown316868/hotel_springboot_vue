@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import Layout from '../components/Layout.vue'
+import SimpleHeader from '../components/SimpleHeader.vue'
 import { searchAvailableRooms } from '@/api/booking'
 import { settingsApi } from '@/api/settings'
 import type { RoomResponse } from '@/types/booking'
@@ -101,16 +101,34 @@ const getRoomCapacity = (type: string) => {
   return roomTypesConfig.value[type]?.capacity || 2
 }
 
-// 获取房型图片
-const getRoomImage = (roomType: string) => {
-  const images: Record<string, string> = {
+// 获取房型图片（优先使用上传的图片）
+const getRoomImage = (room: RoomResponse) => {
+  // 如果房间有上传的图片，使用第一张
+  if (room.images && room.images !== '') {
+    try {
+      const parsedImages = JSON.parse(room.images)
+      if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+        const firstImage = parsedImages[0]
+        // 如果是相对路径，转换为完整URL
+        if (firstImage.startsWith('/uploads/')) {
+          return `http://localhost:8080${firstImage}`
+        }
+        return firstImage
+      }
+    } catch (e) {
+      console.error('Failed to parse images:', e)
+    }
+  }
+
+  // 否则使用默认图片
+  const defaultImages: Record<string, string> = {
     'SINGLE': 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&q=80&w=800',
     'DOUBLE': 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&q=80&w=800',
     'SUITE': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&q=80&w=800',
     'EXECUTIVE_SUITE': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&q=80&w=800',
     'PRESIDENTIAL_SUITE': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&q=80&w=800'
   }
-  return images[roomType] || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&q=80&w=800'
+  return defaultImages[room.type] || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&q=80&w=800'
 }
 
 // 获取房型类别
@@ -132,6 +150,11 @@ const bookRoom = (room: RoomResponse) => {
   router.push('/bookings/new')
 }
 
+// 跳转到房间详情页
+const goToRoomDetail = (room: RoomResponse) => {
+  router.push(`/room-detail/${room.id}`)
+}
+
 // 组件挂载时获取数据
 onMounted(async () => {
   await fetchRoomTypesConfig()
@@ -140,8 +163,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Layout>
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="min-h-screen bg-slate-50">
+    <SimpleHeader />
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <header class="mb-8">
         <h1 class="text-2xl font-bold text-gray-900">房间浏览与搜索</h1>
         <p class="text-sm text-gray-500 mt-1">浏览酒店所有可用房型并进行检索</p>
@@ -187,9 +211,14 @@ onMounted(async () => {
       </div>
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="room in availableRooms" :key="room.id" class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex flex-col hover:-translate-y-1 transition-transform duration-300">
+        <div
+          v-for="room in availableRooms"
+          :key="room.id"
+          @click="goToRoomDetail(room)"
+          class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex flex-col hover:-translate-y-1 transition-transform duration-300 cursor-pointer"
+        >
           <div class="relative h-48 overflow-hidden">
-            <img :src="getRoomImage(room.type)" :alt="room.type" class="w-full h-full object-cover" />
+            <img :src="getRoomImage(room)" :alt="room.type" class="w-full h-full object-cover" />
             <div class="absolute top-4 left-4">
               <span class="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-blue-600 shadow-sm">
                 {{ getRoomCategory(room.type) }}
@@ -220,11 +249,11 @@ onMounted(async () => {
                 <span class="block text-2xl font-black text-gray-900">¥{{ room.price }}</span>
                 <span class="text-xs text-gray-500 font-medium italic">每晚</span>
               </div>
-              <el-button type="primary" @click="bookRoom(room)">立即预订</el-button>
+              <el-button type="primary" @click.stop="bookRoom(room)">立即预订</el-button>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </Layout>
+  </div>
 </template>

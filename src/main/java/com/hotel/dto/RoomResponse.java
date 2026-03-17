@@ -21,6 +21,7 @@ public class RoomResponse {
     private String status;
     private BigDecimal price;
     private Integer capacity;
+    private String images; // JSON字符串: ["url1", "url2"]
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

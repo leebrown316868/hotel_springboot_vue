@@ -17,11 +17,17 @@ export interface RoomResponse {
 }
 
 export interface BookingRequest {
-  guestId: number
+  guestId?: number // 可选，如果提供 guestInfo 则不需要
   roomId: number
   checkInDate: string
   checkOutDate: string
   guestCount: number
+  guestInfo?: {
+    name: string
+    phone: string
+    email: string
+    notes?: string
+  }
 }
 
 export interface BookingResponse {

@@ -21,9 +21,17 @@ const handleLogin = async () => {
   loading.value = true
 
   try {
-    await login(loginForm.email, loginForm.password)
+    const authResponse = await login(loginForm.email, loginForm.password)
     ElMessage.success('登录成功！正在跳转...')
-    router.push('/dashboard')
+
+    // 根据用户角色跳转到不同页面
+    const userRole = authResponse.user.role
+    if (userRole === 'ADMIN' || userRole === 'STAFF') {
+      router.push('/dashboard')
+    } else {
+      // 客户角色跳转到浏览房间页面
+      router.push('/browse-rooms')
+    }
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || '登录失败，请检查邮箱和密码'
     ElMessage.error(errorMessage)

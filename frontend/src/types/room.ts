@@ -16,6 +16,7 @@ export interface RoomRequest {
   status: string
   price: number
   capacity: number
+  images?: string // JSON字符串: ["url1", "url2"]
 }
 
 export interface RoomResponse {
@@ -26,6 +27,7 @@ export interface RoomResponse {
   status: string
   price: number
   capacity: number
+  images?: string // JSON字符串: ["url1", "url2"]
   createdAt: string
   updatedAt: string
 }

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import type { UploadUserFile, UploadProps, UploadRawFile } from 'element-plus'
 import Layout from '../components/Layout.vue'
 import {
   getRooms,
@@ -9,12 +10,14 @@ import {
   createRoom,
   updateRoom,
   deleteRoom,
-  updateRoomStatus
+  updateRoomStatus,
+  uploadRoomImage
 } from '@/api/room'
 import { settingsApi } from '@/api/settings'
 import type { RoomResponse, RoomRequest } from '@/types/room'
 import type { RoomTypeConfig } from '@/types/settings'
 import { getUser } from '@/utils/auth'
+import axios from 'axios'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -42,6 +45,26 @@ const roomForm = ref<RoomRequest>({
   status: 'AVAILABLE',
   price: 0,
   capacity: 1
+})
+
+// 图片上传相关
+const imageFileList = ref<UploadUserFile[]>([])
+const uploadingImages = ref(false)
+
+// 上传URL
+const uploadUrl = computed(() => {
+  if (dialogMode.value === 'edit' && currentRoom.value) {
+    return `/api/rooms/${currentRoom.value.id}/images`
+  }
+  return ''
+})
+
+// 上传请求头
+const uploadHeaders = computed(() => {
+  const token = localStorage.getItem('token')
+  return {
+    'Authorization': token ? `Bearer ${token}` : ''
+  }
 })
 
 // 动态房型选项，从系统设置获取
@@ -165,6 +188,24 @@ const handleEdit = async (row: RoomResponse) => {
     price: row.price,
     capacity: row.capacity
   }
+
+  // 加载现有图片
+  imageFileList.value = []
+  if (row.images && row.images !== '') {
+    try {
+      const images = JSON.parse(row.images)
+      if (Array.isArray(images)) {
+        imageFileList.value = images.map((url: string, index: number) => ({
+          name: `image_${index + 1}`,
+          url: url.startsWith('http') ? url : `http://localhost:8080${url}`,
+          uid: Date.now() + index
+        }))
+      }
+    } catch (e) {
+      console.error('Failed to parse images:', e)
+    }
+  }
+
   dialogVisible.value = true
 }
 
@@ -239,7 +280,22 @@ const submitForm = async () => {
         fetchRooms()
       }
     } else {
-      const response = await updateRoom(currentRoom.value!.id, roomForm.value)
+      // 收集图片URL
+      const images = imageFileList.value
+        .filter(file => file.url)
+        .map(file => {
+          // 如果是上传的图片，URL是完整路径，需要转为相对路径
+          if (file.url && file.url.startsWith('http://localhost:8080/uploads')) {
+            return file.url.replace('http://localhost:8080', '')
+          }
+          return file.url || ''
+        })
+
+      // 更新房间信息（包含图片）
+      const response = await updateRoom(currentRoom.value!.id, {
+        ...roomForm.value,
+        images: JSON.stringify(images)
+      })
       if (response.code === 200) {
         ElMessage.success('更新成功')
         dialogVisible.value = false
@@ -252,6 +308,60 @@ const submitForm = async () => {
   } finally {
     saving.value = false
   }
+}
+
+// 图片上传前验证
+const beforeUpload: UploadProps['beforeUpload'] = (rawFile) => {
+  // 验证文件类型
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  if (!allowedTypes.includes(rawFile.type)) {
+    ElMessage.error('只支持 JPG、PNG、WEBP 格式的图片')
+    return false
+  }
+
+  // 验证文件大小（5MB）
+  const maxSize = 5 * 1024 * 1024
+  if (rawFile.size > maxSize) {
+    ElMessage.error('图片大小不能超过 5MB')
+    return false
+  }
+
+  // 验证图片数量
+  if (imageFileList.value.length >= 5) {
+    ElMessage.error('最多只能上传 5 张图片')
+    return false
+  }
+
+  return true
+}
+
+// 图片上传成功
+const handleUploadSuccess: UploadProps['onSuccess'] = (response, file) => {
+  if (response.code === 200) {
+    // 更新文件URL
+    file.url = `http://localhost:8080${response.data}`
+    ElMessage.success('图片上传成功')
+  } else {
+    ElMessage.error(response.message || '图片上传失败')
+    // 从列表中移除失败的文件
+    const index = imageFileList.value.indexOf(file)
+    if (index > -1) {
+      imageFileList.value.splice(index, 1)
+    }
+  }
+}
+
+// 图片移除
+const handleRemove: UploadProps['onRemove'] = (file) => {
+  const index = imageFileList.value.indexOf(file)
+  if (index > -1) {
+    imageFileList.value.splice(index, 1)
+  }
+}
+
+// 图片预览
+const handlePreview: UploadProps['onPreview'] = (file) => {
+  window.open(file.url, '_blank')
 }
 
 const getStatusClass = (status: string) => {
@@ -449,11 +559,6 @@ onUnmounted(() => {
               容量：{{ roomTypesConfig.value[roomForm.type]?.capacity || 0 }} 人（由房型配置决定）
             </div>
           </el-form-item>
-          <el-form-item label="状态" required>
-            <el-select v-model="roomForm.status" placeholder="请选择状态" class="w-full">
-              <el-option v-for="option in roomStatusOptions" :key="option.value" :label="option.label" :value="option.value" />
-            </el-select>
-          </el-form-item>
           <el-form-item label="价格" required>
             <el-input-number
               v-model="roomForm.price"
@@ -469,6 +574,29 @@ onUnmounted(() => {
               <template v-else>
                 房间价格由管理员设定，当前显示价格
               </template>
+            </div>
+          </el-form-item>
+          <el-form-item label="房间图片">
+            <div v-if="dialogMode === 'create'" class="text-sm text-gray-500">
+              创建房间后可以在编辑页面上传图片
+            </div>
+            <el-upload
+              v-else
+              v-model:file-list="imageFileList"
+              :action="uploadUrl"
+              :headers="uploadHeaders"
+              list-type="picture-card"
+              :on-preview="handlePreview"
+              :on-remove="handleRemove"
+              :on-success="handleUploadSuccess"
+              :before-upload="beforeUpload"
+              :limit="5"
+              accept=".jpg,.jpeg,.png,.webp"
+            >
+              <el-icon><Plus /></el-icon>
+            </el-upload>
+            <div class="text-xs text-gray-500 mt-1">
+              支持 JPG、PNG、WEBP 格式，最大 5MB，最多 5 张图片
             </div>
           </el-form-item>
         </el-form>

@@ -1,7 +1,6 @@
 # 酒店民宿管理系统
 
 ## 项目注意事项
-- 需要启动项目或进浏览器调试必须告诉用户让用户手动执行节省token而不是后台运行
 - 启动项目或重启项目必须结束所有java进程taskkill //F //IM java.exe，然后mvn spring-boot:run，run mvn spring-boot:run must focus only on errors，only sleep 10s
 - 启动前端项目或重启前端项目必须先结束所有的前端node进程taskkill //F //IM bash.exe，然后npm run dev
 - 中文输出

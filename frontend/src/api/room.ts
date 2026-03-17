@@ -50,3 +50,17 @@ export const updateRoomStatus = async (
   const response = await api.patch<ApiResponse<RoomResponse>>(`/api/rooms/${id}/status`, { status })
   return response.data
 }
+
+export const uploadRoomImage = async (
+  id: number,
+  file: File
+): Promise<ApiResponse<string>> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await api.post<ApiResponse<string>>(`/api/rooms/${id}/images`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+  return response.data
+}

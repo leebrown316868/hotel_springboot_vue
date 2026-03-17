@@ -16,6 +16,8 @@ public interface BookingService {
 
     BookingResponse findById(Long id);
 
+    BookingResponse findByBookingNumber(String bookingNumber);
+
     BookingResponse create(BookingRequest request, Long userId);
 
     BookingResponse updateStatus(Long id, String status);
@@ -25,6 +27,16 @@ public interface BookingService {
     void checkIn(Long id);
 
     void checkOut(Long id);
+
+    void cancelBookingByNumber(String bookingNumber);
+
+    void checkInByNumber(String bookingNumber);
+
+    void checkOutByNumber(String bookingNumber);
+
+    void deleteBooking(Long id);
+
+    void deleteBookingByNumber(String bookingNumber);
 
     BookingResponse processPayment(Long id, String paymentMethod);
 

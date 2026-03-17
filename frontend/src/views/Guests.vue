@@ -11,8 +11,12 @@ import {
   getGuestBookings
 } from '@/api/guest'
 import type { GuestResponse, GuestRequest, BookingSummary } from '@/types/guest'
+import { getUser } from '@/utils/auth'
 
 const searchQuery = ref('')
+
+// 权限控制
+const isAdmin = computed(() => getUser()?.role === 'ADMIN')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const loading = ref(false)
@@ -344,7 +348,7 @@ onMounted(() => {
                     <el-dropdown-item :icon="'Calendar'" @click="handleViewBookings(scope.row)">
                       预订历史
                     </el-dropdown-item>
-                    <el-dropdown-item divided :icon="'Delete'" @click="handleDelete(scope.row)">
+                    <el-dropdown-item v-if="isAdmin" divided :icon="'Delete'" @click="handleDelete(scope.row)">
                       删除
                     </el-dropdown-item>
                   </el-dropdown-menu>

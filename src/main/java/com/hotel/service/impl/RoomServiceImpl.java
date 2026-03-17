@@ -14,14 +14,22 @@ import com.hotel.repository.RoomRepository;
 import com.hotel.service.RoomService;
 import com.hotel.specification.RoomSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +37,9 @@ public class RoomServiceImpl implements RoomService {
 
     private final RoomRepository roomRepository;
     private final RoomMapper roomMapper;
+
+    @Value("${file.upload.dir:uploads}")
+    private String uploadDir;
 
     @Override
     public RoomListResponse getRooms(int page, int size, String number, String floor, String status) {
@@ -142,5 +153,46 @@ public class RoomServiceImpl implements RoomService {
             }
             return null;
         }
+    }
+
+    @Override
+    public String uploadRoomImage(Long roomId, MultipartFile file) throws IOException {
+        // 验证房间是否存在
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RoomNotFoundException("房间不存在: " + roomId));
+
+        // 验证文件类型
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.startsWith("image/"))) {
+            throw new IllegalArgumentException("只支持图片文件");
+        }
+
+        // 验证文件大小（5MB）
+        long maxSize = 5 * 1024 * 1024;
+        if (file.getSize() > maxSize) {
+            throw new IllegalArgumentException("图片大小不能超过5MB");
+        }
+
+        // 创建房间目录
+        String roomDirPath = uploadDir + File.separator + "rooms" + File.separator + roomId;
+        File roomDir = new File(roomDirPath);
+        if (!roomDir.exists()) {
+            roomDir.mkdirs();
+        }
+
+        // 生成文件名：时间戳_随机字符.扩展名
+        String originalFilename = file.getOriginalFilename();
+        String extension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String filename = System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
+
+        // 保存文件
+        Path filePath = Paths.get(roomDirPath, filename);
+        Files.write(filePath, file.getBytes());
+
+        // 返回访问URL
+        return "/uploads/rooms/" + roomId + "/" + filename;
     }
 }

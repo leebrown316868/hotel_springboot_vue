@@ -16,12 +16,14 @@ com\hotel\entity\RoomTypeEntity.class
 com\hotel\dto\RoomTypeRequest.class
 com\hotel\dto\AuthRequest.class
 com\hotel\service\NotificationService.class
+com\hotel\entity\Booking$BookingBuilder.class
 com\hotel\mapper\RoomMapper.class
+com\hotel\dto\PublicSettingsResponse.class
 com\hotel\dto\RoomRequest.class
 com\hotel\dto\BookingReviewResponse.class
 com\hotel\exception\GuestAlreadyExistsException.class
 com\hotel\config\SecurityConfig.class
-com\hotel\service\impl\GuestServiceImpl.class
+com\hotel\migration\DatabaseMigration.class
 com\hotel\dto\RoomStatusDistribution.class
 com\hotel\entity\Room.class
 com\hotel\repository\UserRepository.class
@@ -34,6 +36,7 @@ com\hotel\entity\RoomTypeEntity$RoomTypeEntityBuilder.class
 com\hotel\dto\ProfileResponse.class
 com\hotel\entity\User.class
 com\hotel\init\DataInitializer$1.class
+com\hotel\dto\UpdateProfileRequest.class
 com\hotel\exception\RoomTypeAlreadyExistsException.class
 com\hotel\dto\AuthResponse$AuthResponseBuilder.class
 com\hotel\dto\GuestListResponse.class
@@ -45,7 +48,6 @@ com\hotel\entity\PaymentStatus.class
 com\hotel\repository\RoomRepository.class
 com\hotel\service\impl\RoomTypeServiceImpl.class
 com\hotel\service\GuestService.class
-com\hotel\entity\Room$RoomBuilder.class
 com\hotel\dto\PaymentRequest.class
 com\hotel\service\StatisticsService.class
 com\hotel\mapper\NotificationMapper.class
@@ -57,6 +59,7 @@ com\hotel\exception\SettingsNotFoundException.class
 com\hotel\repository\SystemSettingsRepository.class
 com\hotel\config\JwtConfig.class
 com\hotel\controller\NotificationController.class
+com\hotel\dto\UserResponse$UserResponseBuilder.class
 com\hotel\dto\NotificationListResponse.class
 com\hotel\dto\RecentBookingSummary$RecentBookingSummaryBuilder.class
 com\hotel\exception\ReviewAlreadyExistsException.class
@@ -74,6 +77,7 @@ com\hotel\entity\Guest$GuestBuilder.class
 com\hotel\security\UserDetailsServiceImpl.class
 com\hotel\entity\GuestStatus.class
 com\hotel\mapper\ProfileMapper.class
+com\hotel\config\FileUploadConfig.class
 com\hotel\dto\RoomStatusDistribution$RoomStatusDistributionBuilder.class
 com\hotel\dto\AuthResponse.class
 com\hotel\dto\DashboardStatistics$DashboardStatisticsBuilder.class
@@ -90,9 +94,11 @@ com\hotel\dto\ApiResponse.class
 com\hotel\dto\SettingsRequest.class
 com\hotel\config\DatabaseConfig.class
 com\hotel\exception\GuestNotFoundException.class
+com\hotel\entity\Booking.class
 com\hotel\controller\BookingController.class
+com\hotel\dto\BookingRequest$GuestInfo.class
 com\hotel\service\impl\BookingServiceImpl.class
-com\hotel\service\impl\RoomServiceImpl.class
+com\hotel\dto\PublicSettingsResponse$PublicSettingsResponseBuilder.class
 com\hotel\dto\RoomSearchRequest$RoomSearchRequestBuilder.class
 com\hotel\exception\PaymentFailedException.class
 com\hotel\dto\GuestListResponse$GuestListResponseBuilder.class
@@ -115,6 +121,7 @@ com\hotel\dto\SettingsResponse.class
 com\hotel\service\AuthService.class
 com\hotel\dto\UserResponse.class
 com\hotel\dto\RoomResponse.class
+com\hotel\dto\BookingRequest$GuestInfo$GuestInfoBuilder.class
 com\hotel\exception\InvalidRoomStatusException.class
 com\hotel\dto\BookingTrendData$BookingTrendDataBuilder.class
 com\hotel\dto\RoomTypeConfig.class
@@ -141,6 +148,7 @@ com\hotel\config\SQLiteDialect$1.class
 com\hotel\dto\GuestRequest$GuestRequestBuilder.class
 com\hotel\security\UserDetailsImpl.class
 com\hotel\dto\BookingTrendData.class
+com\hotel\entity\BookingStatus.class
 com\hotel\mapper\GuestMapper.class
 com\hotel\service\impl\SettingsServiceImpl.class
 com\hotel\dto\GuestResponse.class

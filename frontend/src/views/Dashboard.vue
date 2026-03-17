@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import type { Action } from 'element-plus'
 import Layout from '../components/Layout.vue'
 import * as echarts from 'echarts'
 import {
@@ -10,14 +11,21 @@ import {
   getBookingTrends,
   getRecentBookings
 } from '@/api/statistics'
+import { getBookingByNumber, cancelBookingByNumber, checkInByNumber, checkOutByNumber, deleteBookingByNumber } from '@/api/booking'
 import type {
   DashboardStatistics,
   RoomStatusDistribution,
   BookingTrendData,
   RecentBookingSummary
 } from '@/types/statistics'
+import type { BookingResponse } from '@/types/booking'
 
 const router = useRouter()
+
+// 订单详情对话框
+const bookingDetailDialog = ref(false)
+const selectedBooking = ref<BookingResponse | null>(null)
+const loadingDetail = ref(false)
 
 const statusChartRef = ref<HTMLElement | null>(null)
 const trendsChartRef = ref<HTMLElement | null>(null)
@@ -165,6 +173,39 @@ const getBookingStatusColor = (status: string): string => {
   return colors[status] || 'gray'
 }
 
+const getStatusLabel = (status: string): string => {
+  const labels: Record<string, string> = {
+    'PENDING': '待确认',
+    'CONFIRMED': '已确认',
+    'CHECKED_IN': '已入住',
+    'CHECKED_OUT': '已退房',
+    'CANCELLED': '已取消'
+  }
+  return labels[status] || status
+}
+
+const getStatusType = (status: string) => {
+  const map: Record<string, string> = {
+    'PENDING': 'warning',
+    'CONFIRMED': 'primary',
+    'CHECKED_IN': 'success',
+    'CHECKED_OUT': 'info',
+    'CANCELLED': 'danger'
+  }
+  return map[status] || 'info'
+}
+
+const getRoomTypeName = (type: string): string => {
+  const names: Record<string, string> = {
+    'SINGLE': '单人间',
+    'DOUBLE': '双人间',
+    'SUITE': '套房',
+    'EXECUTIVE_SUITE': '行政套房',
+    'PRESIDENTIAL_SUITE': '总统套房'
+  }
+  return names[type] || type
+}
+
 // 按钮点击处理函数
 const handleManageRooms = () => {
   router.push('/rooms')
@@ -172,6 +213,144 @@ const handleManageRooms = () => {
 
 const handleCreateBooking = () => {
   router.push('/bookings/new')
+}
+
+// 订单操作处理
+const handleBookingAction = async (command: string, booking: RecentBookingSummary) => {
+  switch (command) {
+    case 'view':
+      await viewBookingDetail(booking.bookingNumber)
+      break
+    case 'edit':
+      router.push(`/staff-bookings?search=${booking.bookingNumber}`)
+      break
+    case 'checkin':
+      await handleCheckIn(booking)
+      break
+    case 'checkout':
+      await handleCheckOut(booking)
+      break
+    case 'cancel':
+      await handleCancelBooking(booking)
+      break
+    case 'delete':
+      await handleDeleteBooking(booking)
+      break
+  }
+}
+
+// 查看订单详情
+const viewBookingDetail = async (bookingNumber: string) => {
+  loadingDetail.value = true
+  bookingDetailDialog.value = true
+  try {
+    const response = await getBookingByNumber(bookingNumber)
+    if (response.data.code === 200) {
+      selectedBooking.value = response.data.data
+    } else {
+      ElMessage.error('获取订单详情失败')
+      bookingDetailDialog.value = false
+    }
+  } catch (error) {
+    console.error('获取订单详情失败:', error)
+    ElMessage.error('获取订单详情失败')
+    bookingDetailDialog.value = false
+  } finally {
+    loadingDetail.value = false
+  }
+}
+
+// 办理入住
+const handleCheckIn = async (booking: RecentBookingSummary) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认将订单 ${booking.bookingNumber} 办理入住？`,
+      '办理入住',
+      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
+    )
+    await checkInByNumber(booking.bookingNumber)
+    ElMessage.success('办理入住成功')
+    await loadDashboardData() // 刷新数据
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.message || '办理入住失败')
+    }
+  }
+}
+
+// 办理退房
+const handleCheckOut = async (booking: RecentBookingSummary) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认将订单 ${booking.bookingNumber} 办理退房？`,
+      '办理退房',
+      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
+    )
+    await checkOutByNumber(booking.bookingNumber)
+    ElMessage.success('办理退房成功')
+    await loadDashboardData() // 刷新数据
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.message || '办理退房失败')
+    }
+  }
+}
+
+// 取消订单
+const handleCancelBooking = async (booking: RecentBookingSummary) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认取消订单 ${booking.bookingNumber}？此操作不可恢复。`,
+      '取消订单',
+      { confirmButtonText: '确认取消', cancelButtonText: '返回', type: 'warning' }
+    )
+    await cancelBookingByNumber(booking.bookingNumber)
+    ElMessage.success('订单已取消')
+    await loadDashboardData() // 刷新数据
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.message || '取消订单失败')
+    }
+  }
+}
+
+// 删除订单
+const handleDeleteBooking = async (booking: RecentBookingSummary) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认删除订单 ${booking.bookingNumber}？删除后将无法恢复。`,
+      '删除订单',
+      { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'error', confirmButtonClass: 'el-button--danger' }
+    )
+    await deleteBookingByNumber(booking.bookingNumber)
+    ElMessage.success('订单已删除')
+    await loadDashboardData() // 刷新数据
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.message || '删除订单失败')
+    }
+  }
+}
+
+// 根据订单状态获取可用操作
+const getAvailableActions = (status: string) => {
+  const actions = [
+    { command: 'view', label: '查看详情', icon: 'View' }
+  ]
+
+  if (status === 'PENDING' || status === 'CONFIRMED') {
+    if (status === 'CONFIRMED') {
+      actions.push({ command: 'checkin', label: '办理入住', icon: 'Check' })
+    }
+    actions.push({ command: 'cancel', label: '取消订单', icon: 'Close' })
+  } else if (status === 'CHECKED_IN') {
+    actions.push({ command: 'checkout', label: '办理退房', icon: 'Back' })
+  } else if (status === 'CANCELLED' || status === 'CHECKED_OUT') {
+    actions.push({ command: 'delete', label: '删除订单', icon: 'Delete' })
+  }
+
+  actions.push({ command: 'edit', label: '更多操作', icon: 'MoreFilled' })
+  return actions
 }
 
 onMounted(async () => {
@@ -346,7 +525,7 @@ onBeforeUnmount(() => {
       <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h3 class="font-bold text-slate-800">最近预订</h3>
-          <button class="text-blue-600 text-sm font-medium hover:underline">查看全部</button>
+          <router-link to="/dashboard/bookings" class="text-blue-600 text-sm font-medium hover:underline">查看全部</router-link>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left">
@@ -380,9 +559,29 @@ onBeforeUnmount(() => {
                 </td>
                 <td class="px-6 py-4 text-slate-600">{{ formatDate(booking.checkInDate) }}</td>
                 <td class="px-6 py-4 text-right">
-                  <button class="text-slate-400 hover:text-blue-600 transition-colors">
-                    <el-icon :size="20"><MoreFilled /></el-icon>
-                  </button>
+                  <el-dropdown
+                    trigger="click"
+                    @command="(cmd: string) => handleBookingAction(cmd, booking)"
+                  >
+                    <span class="text-slate-400 hover:text-blue-600 transition-colors cursor-pointer">
+                      <el-icon :size="20"><MoreFilled /></el-icon>
+                    </span>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item
+                          v-for="action in getAvailableActions(booking.status)"
+                          :key="action.command"
+                          :command="action.command"
+                          :divided="action.command === 'edit'"
+                        >
+                          <el-icon>
+                            <component :is="action.icon" />
+                          </el-icon>
+                          {{ action.label }}
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
                 </td>
               </tr>
             </tbody>
@@ -392,6 +591,89 @@ onBeforeUnmount(() => {
           显示最近 {{ recentBookings.length }} 条记录
         </div>
       </div>
+
+      <!-- 订单详情对话框 -->
+      <el-dialog
+        v-model="bookingDetailDialog"
+        title="订单详情"
+        width="600px"
+        :close-on-click-modal="false"
+      >
+        <div v-if="loadingDetail" class="flex justify-center py-8">
+          <el-icon class="is-loading text-3xl text-blue-600"><Loading /></el-icon>
+        </div>
+        <div v-else-if="selectedBooking" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm text-slate-500">订单编号</label>
+              <div class="font-medium">{{ selectedBooking.bookingNumber }}</div>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">订单状态</label>
+              <div>
+                <el-tag :type="getStatusType(selectedBooking.status)">
+                  {{ getStatusLabel(selectedBooking.status) }}
+                </el-tag>
+              </div>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">客人姓名</label>
+              <div class="font-medium">{{ selectedBooking.guestName }}</div>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">联系电话</label>
+              <div class="font-medium">{{ selectedBooking.guestPhone || '-' }}</div>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">房间号</label>
+              <div class="font-medium">{{ selectedBooking.roomNumber }}</div>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">房型</label>
+              <div class="font-medium">{{ getRoomTypeName(selectedBooking.roomType) }}</div>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">入住日期</label>
+              <div class="font-medium">{{ selectedBooking.checkInDate }}</div>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">退房日期</label>
+              <div class="font-medium">{{ selectedBooking.checkOutDate }}</div>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">入住人数</label>
+              <div class="font-medium">{{ selectedBooking.guestCount }} 人</div>
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">订单金额</label>
+              <div class="font-medium text-blue-600">¥{{ selectedBooking.totalAmount }}</div>
+            </div>
+          </div>
+          <div v-if="selectedBooking.notes">
+            <label class="text-sm text-slate-500">备注</label>
+            <div class="text-slate-700 bg-slate-50 p-3 rounded-lg mt-1">
+              {{ selectedBooking.notes }}
+            </div>
+          </div>
+        </div>
+        <template #footer>
+          <el-button @click="bookingDetailDialog = false">关闭</el-button>
+          <el-button
+            v-if="selectedBooking?.status === 'CONFIRMED'"
+            type="success"
+            @click="bookingDetailDialog = false; handleCheckIn(selectedBooking as any)"
+          >
+            办理入住
+          </el-button>
+          <el-button
+            v-if="selectedBooking?.status === 'CHECKED_IN'"
+            type="warning"
+            @click="bookingDetailDialog = false; handleCheckOut(selectedBooking as any)"
+          >
+            办理退房
+          </el-button>
+        </template>
+      </el-dialog>
     </div>
   </Layout>
 </template>

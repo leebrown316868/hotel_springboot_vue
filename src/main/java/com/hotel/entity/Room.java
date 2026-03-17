@@ -8,9 +8,7 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "rooms")
-@Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class Room {
 
     @Id
@@ -36,6 +34,9 @@ public class Room {
 
     @Column(nullable = false)
     private Integer capacity;
+
+    @Column(columnDefinition = "TEXT")
+    private String images;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

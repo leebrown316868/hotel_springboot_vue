@@ -8,6 +8,7 @@ import com.hotel.dto.RoomSearchRequest;
 import com.hotel.entity.Booking;
 import com.hotel.entity.BookingStatus;
 import com.hotel.entity.Guest;
+import com.hotel.entity.GuestStatus;
 import com.hotel.entity.PaymentStatus;
 import com.hotel.entity.Room;
 import com.hotel.entity.RoomStatus;
@@ -100,9 +101,18 @@ public class BookingServiceImpl implements BookingService {
             throw new IllegalArgumentException("退房日期必须晚于入住日期");
         }
 
-        // 查询客户
-        Guest guest = guestRepository.findById(request.getGuestId())
-                .orElseThrow(() -> new GuestNotFoundException("客户不存在: " + request.getGuestId()));
+        // 处理客人信息
+        Guest guest;
+        if (request.getGuestInfo() != null) {
+            // 如果提供了客人信息，先查找或创建客人记录
+            guest = findOrCreateGuest(request.getGuestInfo());
+        } else if (request.getGuestId() != null) {
+            // 使用提供的客人ID
+            guest = guestRepository.findById(request.getGuestId())
+                    .orElseThrow(() -> new GuestNotFoundException("客户不存在: " + request.getGuestId()));
+        } else {
+            throw new IllegalArgumentException("必须提供客人ID或客人信息");
+        }
 
         // 查询房间
         Room room = roomRepository.findById(request.getRoomId())
@@ -268,14 +278,26 @@ public class BookingServiceImpl implements BookingService {
             throw new IllegalArgumentException("退房日期必须晚于入住日期");
         }
 
-        // 查询可用房间
-        List<Room> rooms = bookingRepository.findAvailableRooms(
-                request.getCheckInDate(),
-                request.getCheckOutDate(),
-                request.getGuestCount(),
-                request.getRoomTypes(),
-                List.of(BookingStatus.CANCELLED, BookingStatus.CHECKED_OUT)
-        );
+        List<Room> rooms;
+        List<BookingStatus> excludeStatuses = List.of(BookingStatus.CANCELLED, BookingStatus.CHECKED_OUT);
+
+        // 根据是否有房型筛选调用不同的查询方法
+        if (request.getRoomTypes() == null || request.getRoomTypes().isEmpty()) {
+            rooms = bookingRepository.findAvailableRoomsNoTypeFilter(
+                    request.getCheckInDate(),
+                    request.getCheckOutDate(),
+                    request.getGuestCount(),
+                    excludeStatuses
+            );
+        } else {
+            rooms = bookingRepository.findAvailableRoomsWithTypeFilter(
+                    request.getCheckInDate(),
+                    request.getCheckOutDate(),
+                    request.getGuestCount(),
+                    request.getRoomTypes(),
+                    excludeStatuses
+            );
+        }
 
         return rooms.stream()
                 .map(roomMapper::toResponse)
@@ -289,7 +311,8 @@ public class BookingServiceImpl implements BookingService {
     private String generateBookingNumber() {
         String today = LocalDate.now().format(DATE_FORMATTER);
         Long count = bookingRepository.countByCreatedAtBetween(
-                LocalDate.now(), LocalDate.now().plusDays(1));
+                LocalDateTime.now().toLocalDate().atStartOfDay(),
+                LocalDateTime.now().toLocalDate().plusDays(1).atStartOfDay());
 
         if (count == null) {
             count = 0L;
@@ -313,6 +336,40 @@ public class BookingServiceImpl implements BookingService {
     }
 
     /**
+     * 查找或创建客人记录
+     * 如果邮箱已存在，更新客人信息；否则创建新客人
+     */
+    private Guest findOrCreateGuest(BookingRequest.GuestInfo guestInfo) {
+        // 如果提供了邮箱，先查找是否存在
+        if (guestInfo.getEmail() != null && !guestInfo.getEmail().trim().isEmpty()) {
+            java.util.Optional<Guest> existingGuest = guestRepository.findByEmail(guestInfo.getEmail());
+            if (existingGuest.isPresent()) {
+                // 更新现有客人信息
+                Guest guest = existingGuest.get();
+                if (guestInfo.getName() != null) {
+                    guest.setName(guestInfo.getName());
+                }
+                if (guestInfo.getPhone() != null) {
+                    guest.setPhone(guestInfo.getPhone());
+                }
+                guest.setUpdatedAt(LocalDateTime.now());
+                return guestRepository.save(guest);
+            }
+        }
+
+        // 创建新客人
+        Guest newGuest = Guest.builder()
+                .name(guestInfo.getName() != null ? guestInfo.getName() : "未知")
+                .email(guestInfo.getEmail() != null ? guestInfo.getEmail() : "unknown@temp.com")
+                .phone(guestInfo.getPhone() != null ? guestInfo.getPhone() : "0000000000")
+                .country("中国") // 默认国家
+                .status(GuestStatus.ACTIVE)
+                .totalBookings(0)
+                .build();
+        return guestRepository.save(newGuest);
+    }
+
+    /**
      * 验证状态流转是否合法
      */
     private boolean isValidStatusTransition(BookingStatus from, BookingStatus to) {
@@ -325,5 +382,106 @@ public class BookingServiceImpl implements BookingService {
         } else {
             return false;
         }
+    }
+
+    @Override
+    public BookingResponse findByBookingNumber(String bookingNumber) {
+        Booking booking = bookingRepository.findByBookingNumber(bookingNumber)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + bookingNumber));
+        return bookingMapper.toResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public void cancelBookingByNumber(String bookingNumber) {
+        Booking booking = bookingRepository.findByBookingNumber(bookingNumber)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + bookingNumber));
+
+        if (booking.getStatus() != BookingStatus.PENDING &&
+                booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new InvalidBookingStatusException("只有待确认或已确认的订单可以取消");
+        }
+
+        booking.setStatus(BookingStatus.CANCELLED);
+        if (booking.getPaymentStatus() == PaymentStatus.PAID) {
+            booking.setPaymentStatus(PaymentStatus.REFUNDED);
+        }
+
+        bookingRepository.save(booking);
+        log.info("Cancelled booking {}", bookingNumber);
+    }
+
+    @Override
+    @Transactional
+    public void checkInByNumber(String bookingNumber) {
+        Booking booking = bookingRepository.findByBookingNumber(bookingNumber)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + bookingNumber));
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new InvalidBookingStatusException("只有已确认的订单可以办理入住");
+        }
+
+        booking.setStatus(BookingStatus.CHECKED_IN);
+
+        // 更新房间状态
+        Room room = booking.getRoom();
+        room.setStatus(RoomStatus.OCCUPIED);
+        roomRepository.save(room);
+
+        bookingRepository.save(booking);
+        log.info("Checked in booking {}", bookingNumber);
+    }
+
+    @Override
+    @Transactional
+    public void checkOutByNumber(String bookingNumber) {
+        Booking booking = bookingRepository.findByBookingNumber(bookingNumber)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + bookingNumber));
+
+        if (booking.getStatus() != BookingStatus.CHECKED_IN) {
+            throw new InvalidBookingStatusException("只有已入住的订单可以办理退房");
+        }
+
+        booking.setStatus(BookingStatus.CHECKED_OUT);
+
+        // 更新房间状态
+        Room room = booking.getRoom();
+        room.setStatus(RoomStatus.CLEANING);
+        roomRepository.save(room);
+
+        bookingRepository.save(booking);
+        log.info("Checked out booking {}", bookingNumber);
+    }
+
+    @Override
+    @Transactional
+    public void deleteBooking(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + id));
+
+        // 只有已取消或已退房的订单可以删除
+        if (booking.getStatus() != BookingStatus.CANCELLED &&
+                booking.getStatus() != BookingStatus.CHECKED_OUT) {
+            throw new InvalidBookingStatusException("只有已取消或已退房的订单可以删除");
+        }
+
+        bookingRepository.deleteById(id);
+        log.info("Deleted booking {}", id);
+    }
+
+    @Override
+    @Transactional
+    public void deleteBookingByNumber(String bookingNumber) {
+        Booking booking = bookingRepository.findByBookingNumber(bookingNumber)
+                .orElseThrow(() -> new BookingNotFoundException("预订不存在: " + bookingNumber));
+
+        // 只有已取消或已退房的订单可以删除
+        if (booking.getStatus() != BookingStatus.CANCELLED &&
+                booking.getStatus() != BookingStatus.CHECKED_OUT) {
+            throw new InvalidBookingStatusException("只有已取消或已退房的订单可以删除");
+        }
+
+        bookingRepository.delete(booking);
+        log.info("Deleted booking {}", bookingNumber);
     }
 }

@@ -7,16 +7,24 @@ import com.hotel.dto.BookingResponse;
 import com.hotel.dto.PaymentRequest;
 import com.hotel.dto.RoomResponse;
 import com.hotel.dto.RoomSearchRequest;
+import com.hotel.entity.Guest;
 import com.hotel.entity.UserRole;
+import com.hotel.repository.GuestRepository;
+import com.hotel.security.UserDetailsImpl;
 import com.hotel.service.BookingService;
 import com.hotel.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.validation.annotation.Validated;
@@ -37,6 +45,7 @@ public class BookingController {
 
     private final BookingService bookingService;
     private final JwtUtil jwtUtil;
+    private final GuestRepository guestRepository;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -58,10 +67,10 @@ public class BookingController {
     @PostMapping
     public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
             @Valid @RequestBody BookingRequest request,
-            Authentication authentication) {
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
         log.info("Creating booking: {}", request);
 
-        Long userId = jwtUtil.getUserIdFromToken(authentication.getCredentials().toString());
+        Long userId = userDetails.getId();
         BookingResponse response = bookingService.create(request, userId);
 
         return ResponseEntity.ok(ApiResponse.<BookingResponse>builder()
@@ -72,22 +81,30 @@ public class BookingController {
     }
 
     @GetMapping("/my")
-    @PreAuthorize("hasAnyRole('CUSTOMER')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<BookingListResponse>> getMyBookings(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            Authentication authentication) {
-        log.info("Fetching my bookings");
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        log.info("Fetching my bookings for user: {}", userDetails.getEmail());
 
-        // 从JWT中获取guestId（简化实现，假设email就是guest email）
-        String email = jwtUtil.getUsernameFromToken(authentication.getCredentials().toString());
+        // 根据用户email查找对应的guest
+        Optional<Guest> guestOpt = guestRepository.findByEmail(userDetails.getEmail());
 
-        // 这里需要根据email查找对应的guestId
-        // 暂时使用固定值，实际应该从用户信息中获取
-        Long guestId = 1L;
+        if (guestOpt.isEmpty()) {
+            // 用户没有对应的guest记录，返回空列表
+            log.info("No guest found for user: {}, returning empty booking list", userDetails.getEmail());
+            BookingListResponse emptyResponse = new BookingListResponse();
+            emptyResponse.setContent(List.of());
+            emptyResponse.setTotalElements(0);
+            emptyResponse.setTotalPages(0);
+            emptyResponse.setPageSize(size);
+            emptyResponse.setCurrentPage(page);
+            return ResponseEntity.ok(ApiResponse.success(emptyResponse));
+        }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        BookingListResponse response = bookingService.findByGuestId(guestId, pageable);
+        BookingListResponse response = bookingService.findByGuestId(guestOpt.get().getId(), pageable);
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -114,14 +131,36 @@ public class BookingController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @GetMapping("/number/{bookingNumber}")
+    public ResponseEntity<ApiResponse<BookingResponse>> getBookingByNumber(@PathVariable String bookingNumber) {
+        log.info("Fetching booking detail for number: {}", bookingNumber);
+        BookingResponse response = bookingService.findByBookingNumber(bookingNumber);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<BookingResponse>> cancelBooking(
             @PathVariable Long id,
-            Authentication authentication) {
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
         log.info("Cancelling booking: {}", id);
 
-        Long userId = jwtUtil.getUserIdFromToken(authentication.getCredentials().toString());
+        Long userId = userDetails.getId();
         bookingService.cancelBooking(id, userId);
+
+        return ResponseEntity.ok(ApiResponse.<BookingResponse>builder()
+                .code(200)
+                .message("预订已取消")
+                .data(null)
+                .build());
+    }
+
+    @PatchMapping("/number/{bookingNumber}/cancel")
+    public ResponseEntity<ApiResponse<BookingResponse>> cancelBookingByNumber(
+            @PathVariable String bookingNumber,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        log.info("Cancelling booking: {}", bookingNumber);
+
+        bookingService.cancelBookingByNumber(bookingNumber);
 
         return ResponseEntity.ok(ApiResponse.<BookingResponse>builder()
                 .code(200)
@@ -143,11 +182,37 @@ public class BookingController {
                 .build());
     }
 
+    @PatchMapping("/number/{bookingNumber}/check-in")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ResponseEntity<ApiResponse<BookingResponse>> checkInByNumber(@PathVariable String bookingNumber) {
+        log.info("Checking in booking: {}", bookingNumber);
+        bookingService.checkInByNumber(bookingNumber);
+
+        return ResponseEntity.ok(ApiResponse.<BookingResponse>builder()
+                .code(200)
+                .message("入住办理成功")
+                .data(null)
+                .build());
+    }
+
     @PatchMapping("/{id}/check-out")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<BookingResponse>> checkOut(@PathVariable Long id) {
         log.info("Checking out booking: {}", id);
         bookingService.checkOut(id);
+
+        return ResponseEntity.ok(ApiResponse.<BookingResponse>builder()
+                .code(200)
+                .message("退房办理成功")
+                .data(null)
+                .build());
+    }
+
+    @PatchMapping("/number/{bookingNumber}/check-out")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ResponseEntity<ApiResponse<BookingResponse>> checkOutByNumber(@PathVariable String bookingNumber) {
+        log.info("Checking out booking: {}", bookingNumber);
+        bookingService.checkOutByNumber(bookingNumber);
 
         return ResponseEntity.ok(ApiResponse.<BookingResponse>builder()
                 .code(200)
@@ -168,6 +233,32 @@ public class BookingController {
                 .code(200)
                 .message("支付成功")
                 .data(response)
+                .build());
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BookingResponse>> deleteBooking(@PathVariable Long id) {
+        log.info("Deleting booking: {}", id);
+        bookingService.deleteBooking(id);
+
+        return ResponseEntity.ok(ApiResponse.<BookingResponse>builder()
+                .code(200)
+                .message("订单已删除")
+                .data(null)
+                .build());
+    }
+
+    @DeleteMapping("/number/{bookingNumber}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BookingResponse>> deleteBookingByNumber(@PathVariable String bookingNumber) {
+        log.info("Deleting booking: {}", bookingNumber);
+        bookingService.deleteBookingByNumber(bookingNumber);
+
+        return ResponseEntity.ok(ApiResponse.<BookingResponse>builder()
+                .code(200)
+                .message("订单已删除")
+                .data(null)
                 .build());
     }
 }

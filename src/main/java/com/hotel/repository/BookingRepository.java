@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,7 +42,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     /**
      * 统计指定日期范围内创建的预订数量
      */
-    Long countByCreatedAtBetween(LocalDate start, LocalDate end);
+    Long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     /**
      * 检查房间在指定日期是否已被预订（排除已取消和已退房的记录）
@@ -67,9 +68,26 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Page<Booking> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     /**
-     * 查询指定日期范围内可用的房间
-     * 排除已被预订的房间（预订状态不是已取消或已退房）
-     * 只返回状态为空闲的房间
+     * 查询指定日期范围内可用的房间（无房型筛选）
+     */
+    @Query("SELECT DISTINCT r FROM Room r WHERE " +
+           "r.status = 'AVAILABLE' AND " +
+           "r.id NOT IN (" +
+           "  SELECT b.room.id FROM Booking b WHERE " +
+           "  b.checkInDate < :checkOut AND " +
+           "  b.checkOutDate > :checkIn AND " +
+           "  b.status NOT IN :excludeStatuses" +
+           ") " +
+           "AND (:guestCount IS NULL OR r.capacity >= :guestCount)")
+    List<Room> findAvailableRoomsNoTypeFilter(
+        @Param("checkIn") LocalDate checkIn,
+        @Param("checkOut") LocalDate checkOut,
+        @Param("guestCount") Integer guestCount,
+        @Param("excludeStatuses") List<com.hotel.entity.BookingStatus> excludeStatuses
+    );
+
+    /**
+     * 查询指定日期范围内可用的房间（有房型筛选）
      */
     @Query("SELECT DISTINCT r FROM Room r WHERE " +
            "r.status = 'AVAILABLE' AND " +
@@ -80,13 +98,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "  b.status NOT IN :excludeStatuses" +
            ") " +
            "AND (:guestCount IS NULL OR r.capacity >= :guestCount) " +
-           "AND (:roomTypes IS NULL OR r.type IN :roomTypes)")
-    List<Room> findAvailableRooms(
+           "AND r.type IN :roomTypes")
+    List<Room> findAvailableRoomsWithTypeFilter(
         @Param("checkIn") LocalDate checkIn,
         @Param("checkOut") LocalDate checkOut,
         @Param("guestCount") Integer guestCount,
-        @Param("roomTypes") List<RoomType> roomTypes,
-        @Param("excludeStatuses") List<BookingStatus> excludeStatuses
+        @Param("roomTypes") List<com.hotel.entity.RoomType> roomTypes,
+        @Param("excludeStatuses") List<com.hotel.entity.BookingStatus> excludeStatuses
     );
 
     /**

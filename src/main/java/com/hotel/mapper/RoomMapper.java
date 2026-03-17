@@ -40,20 +40,22 @@ public class RoomMapper {
                 .status(room.getStatus() != null ? room.getStatus().name() : null)
                 .price(room.getPrice())
                 .capacity(capacity)
+                .images(room.getImages())
                 .createdAt(room.getCreatedAt())
                 .updatedAt(room.getUpdatedAt())
                 .build();
     }
 
     public Room toEntity(RoomRequest request) {
-        return Room.builder()
-                .number(request.getNumber())
-                .floor(request.getFloor())
-                .type(parseRoomType(request.getType()))
-                .status(parseRoomStatus(request.getStatus()))
-                .price(request.getPrice())
-                .capacity(request.getCapacity())
-                .build();
+        Room room = new Room();
+        room.setNumber(request.getNumber());
+        room.setFloor(request.getFloor());
+        room.setType(parseRoomType(request.getType()));
+        room.setStatus(parseRoomStatus(request.getStatus()));
+        room.setPrice(request.getPrice());
+        room.setCapacity(request.getCapacity());
+        room.setImages(request.getImages()); // 设置图片
+        return room;
     }
 
     public RoomListResponse toResponseList(Page<Room> rooms) {

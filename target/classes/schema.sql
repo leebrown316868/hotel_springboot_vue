@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
     contact_email VARCHAR(100) NOT NULL DEFAULT 'contact@grandhorizon.com',
     contact_phone VARCHAR(20) NOT NULL DEFAULT '+1 (555) 123-4567',
     address VARCHAR(200),
+    description VARCHAR(1000) DEFAULT '欢迎来到 GrandHotel 豪华酒店，我们致力于为您提供最舒适的住宿体验。',
     currency VARCHAR(10) NOT NULL DEFAULT 'CNY',
     timezone VARCHAR(10) NOT NULL DEFAULT 'UTC+8',
     language VARCHAR(20) NOT NULL DEFAULT 'Chinese',

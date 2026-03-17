@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import Layout from '../components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAllBookings, checkIn, checkOut } from '@/api/booking'
 import type { BookingResponse } from '@/types/booking'
+
+const route = useRoute()
 
 const searchQuery = ref('')
 const statusFilter = ref('')
@@ -112,15 +115,23 @@ const handlePageChange = (page: number) => {
 
 const getRoomTypeName = (type: string) => {
   const names: Record<string, string> = {
-    'SINGLE': '标准间',
-    'DOUBLE': '豪华间',
+    'SINGLE': '单人间',
+    'DOUBLE': '双人间',
     'SUITE': '套房',
-    'DELUXE': '总统套房'
+    'EXECUTIVE_SUITE': '行政套房',
+    'PRESIDENTIAL_SUITE': '总统套房'
   }
   return names[type] || type
 }
 
 onMounted(() => {
+  // 从 URL 参数读取搜索条件
+  if (route.query.search) {
+    searchQuery.value = route.query.search as string
+  }
+  if (route.query.status) {
+    statusFilter.value = route.query.status as string
+  }
   loadBookings()
 })
 </script>

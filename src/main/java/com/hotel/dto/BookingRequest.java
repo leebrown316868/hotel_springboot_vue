@@ -17,7 +17,7 @@ import java.time.LocalDate;
 @Valid
 public class BookingRequest {
 
-    @NotNull(message = "客人ID不能为空")
+    // 客人ID（如果提供新客人信息，此字段可忽略）
     private Long guestId;
 
     @NotNull(message = "房间ID不能为空")
@@ -32,4 +32,18 @@ public class BookingRequest {
     @NotNull(message = "入住人数不能为空")
     @Min(value = 1, message = "入住人数至少为1人")
     private Integer guestCount;
+
+    // 客人信息（可选，用于创建新客人或更新现有客人信息）
+    private GuestInfo guestInfo;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GuestInfo {
+        private String name;
+        private String phone;
+        private String email;
+        private String notes;
+    }
 }

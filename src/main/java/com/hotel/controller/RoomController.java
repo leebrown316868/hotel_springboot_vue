@@ -10,8 +10,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -33,7 +35,6 @@ public class RoomController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<RoomResponse>> getRoomById(@PathVariable Long id) {
         RoomResponse response = roomService.getRoomById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -47,7 +48,7 @@ public class RoomController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ApiResponse<RoomResponse>> updateRoom(
             @PathVariable Long id,
             @Valid @RequestBody RoomRequest request) {
@@ -69,6 +70,15 @@ public class RoomController {
             @RequestBody StatusUpdateRequest request) {
         RoomResponse response = roomService.updateRoomStatus(id, request.getStatus());
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/{id}/images")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ResponseEntity<ApiResponse<String>> uploadRoomImage(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        String imageUrl = roomService.uploadRoomImage(id, file);
+        return ResponseEntity.ok(ApiResponse.success(imageUrl));
     }
 
     private static class StatusUpdateRequest {

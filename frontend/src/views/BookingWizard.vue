@@ -200,11 +200,16 @@ const handlePayment = async () => {
     }
 
     const bookingResponse = await createBooking({
-      guestId: user.id,
       roomId: selectedRoom.value.id,
       checkInDate: formatSearchDate(searchData.dateRange[0]),
       checkOutDate: formatSearchDate(searchData.dateRange[1]),
-      guestCount: parseInt(searchData.guests)
+      guestCount: parseInt(searchData.guests),
+      guestInfo: {
+        name: guestForm.name,
+        phone: guestForm.phone,
+        email: guestForm.email,
+        notes: guestForm.notes
+      }
     })
 
     if (bookingResponse.data.code === 200 && bookingResponse.data.data) {

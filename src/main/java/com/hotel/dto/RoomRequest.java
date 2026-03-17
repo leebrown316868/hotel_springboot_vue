@@ -37,4 +37,6 @@ public class RoomRequest {
     @NotNull(message = "容量不能为空")
     @Positive(message = "容量必须大于0")
     private Integer capacity;
+
+    private String images; // JSON字符串: ["url1", "url2"]
 }
