@@ -48,4 +48,7 @@ public class SettingsRequest {
     private Boolean emailNotificationBookings;
     private Boolean emailNotificationCancellations;
     private Boolean pushNotificationsEnabled;
+
+    @Size(max = 500, message = "酒店描述不能超过500个字符")
+    private String description;
 }
