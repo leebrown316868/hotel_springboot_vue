@@ -1,5 +1,6 @@
 package com.hotel.service;
 
+import com.hotel.dto.PublicSettingsResponse;
 import com.hotel.dto.RoomTypeConfig;
 import com.hotel.dto.SettingsRequest;
 import com.hotel.dto.SettingsResponse;
@@ -15,4 +16,6 @@ public interface SettingsService {
 
     @Transactional
     Map<String, RoomTypeConfig> updateRoomTypesConfig(Map<String, RoomTypeConfig> config);
+
+    PublicSettingsResponse getPublicSettings();
 }
