@@ -71,7 +71,7 @@ public class SecurityConfig {
             .antMatchers(HttpMethod.GET, "/api/rooms/*").permitAll()
             .antMatchers("/uploads/**").permitAll()
             .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-            .antMatchers("/api/rooms/**", "/api/guests/**", "/api/bookings/**", "/api/profile/**", "/api/reviews/**", "/api/statistics/**", "/api/settings/**", "/api/notifications/**").authenticated()
+            .antMatchers("/api/rooms/**", "/api/guests/**", "/api/bookings/**", "/api/profile/**", "/api/reviews/**", "/api/statistics/**", "/api/settings/system", "/api/settings/room-types", "/api/settings/room-types/**", "/api/notifications/**").authenticated()
             .anyRequest().authenticated()
             .and()
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
