@@ -1,5 +1,5 @@
 import api from '@/utils/api'
-import type { Settings, SettingsRequest, RoomTypeConfig, RoomTypeStats } from '@/types/settings'
+import type { Settings, SettingsRequest, RoomTypeConfig, RoomTypeStats, PublicSettings } from '@/types/settings'
 import type { ApiResponse } from '@/types/api'
 import type { RoomTypeResponse } from '@/types/roomType'
 
@@ -42,6 +42,12 @@ export const settingsApi = {
   // 获取房型统计
   getRoomTypeStats: async (code: string): Promise<RoomTypeStats> => {
     const response = await api.get<ApiResponse<RoomTypeStats>>(`/api/settings/room-types/${code}/stats`)
+    return response.data.data
+  },
+
+  // 获取公开的酒店信息（无需认证）
+  getPublicSettings: async (): Promise<PublicSettings> => {
+    const response = await api.get<ApiResponse<PublicSettings>>('/api/settings/public')
     return response.data.data
   }
 }
