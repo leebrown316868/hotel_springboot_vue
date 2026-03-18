@@ -243,6 +243,8 @@ public class BookingServiceImpl implements BookingService {
 
         bookingRepository.save(booking);
         log.info("Checked out booking {}", id);
+
+        notificationHelper.notifyCheckOut(booking);
     }
 
     @Override
