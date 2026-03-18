@@ -150,6 +150,8 @@ public class BookingServiceImpl implements BookingService {
         booking = bookingRepository.save(booking);
         log.info("Created booking with number: {}", bookingNumber);
 
+        notificationHelper.notifyBookingCreated(booking);
+
         return bookingMapper.toResponse(booking);
     }
 
