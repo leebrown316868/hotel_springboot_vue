@@ -40,6 +40,10 @@ public class JwtUtil {
             com.hotel.security.UserDetailsImpl customUserDetails = (com.hotel.security.UserDetailsImpl) userDetails;
             claims.put("id", customUserDetails.getId());
             claims.put("role", customUserDetails.getRole());
+        } else if (userDetails instanceof com.hotel.security.GuestDetailsImpl) {
+            com.hotel.security.GuestDetailsImpl guestDetails = (com.hotel.security.GuestDetailsImpl) userDetails;
+            claims.put("id", guestDetails.getGuest().getId());
+            claims.put("role", guestDetails.getGuest().getRole().name());
         }
         return createToken(claims, userDetails.getUsername());
     }
