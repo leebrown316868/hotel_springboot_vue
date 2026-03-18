@@ -1,12 +1,16 @@
 package com.hotel.service;
 
 import com.hotel.dto.*;
-import com.hotel.entity.User;
+import com.hotel.entity.Guest;
+import com.hotel.entity.GuestStatus;
 import com.hotel.entity.UserRole;
 import com.hotel.exception.AuthenticationException;
-import com.hotel.repository.UserRepository;
+import com.hotel.repository.GuestRepository;
+import com.hotel.security.GuestDetailsImpl;
+import com.hotel.security.GuestDetailsService;
 import com.hotel.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -14,64 +18,80 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UserRepository userRepository;
+    private final GuestRepository guestRepository;
+    private final GuestDetailsService guestDetailsService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
     public AuthResponse login(AuthRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthenticationException("Invalid email or password"));
+        // 通过 GuestDetailsService 加载用户
+        UserDetails userDetails = guestDetailsService.loadUserByUsername(request.getEmail());
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        // 验证密码
+        if (!passwordEncoder.matches(request.getPassword(), userDetails.getPassword())) {
             throw new AuthenticationException("Invalid email or password");
         }
 
-        String token = jwtUtil.generateToken(user);
+        // 生成 token
+        String token = jwtUtil.generateToken(userDetails);
+
+        // 获取 Guest 实体用于返回
+        Guest guest = guestRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AuthenticationException("Guest not found"));
 
         return AuthResponse.builder()
                 .token(token)
-                .user(mapToUserResponse(user))
+                .user(mapToUserResponse(guest))
                 .build();
     }
 
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        // 检查邮箱是否已存在
+        if (guestRepository.existsByEmail(request.getEmail())) {
             throw new AuthenticationException("Email already exists");
         }
 
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setName(request.getName());
-        user.setRole(UserRole.CUSTOMER);
+        // 创建新 Guest
+        Guest guest = Guest.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .phone(request.getPhone())
+                .country(request.getCountry())
+                .role(UserRole.CUSTOMER)
+                .status(GuestStatus.ACTIVE)
+                .totalBookings(0)
+                .build();
 
-        user = userRepository.save(user);
+        guest = guestRepository.save(guest);
 
-        String token = jwtUtil.generateToken(user);
+        // 使用 GuestDetailsImpl 生成 token
+        GuestDetailsImpl userDetails = new GuestDetailsImpl(guest);
+        String token = jwtUtil.generateToken(userDetails);
 
         return AuthResponse.builder()
                 .token(token)
-                .user(mapToUserResponse(user))
+                .user(mapToUserResponse(guest))
                 .build();
     }
 
     public UserResponse getCurrentUser(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AuthenticationException("User not found"));
+        Guest guest = guestRepository.findByEmail(email)
+                .orElseThrow(() -> new AuthenticationException("Guest not found"));
 
-        return mapToUserResponse(user);
+        return mapToUserResponse(guest);
     }
 
     public String logout() {
         return "Logged out successfully";
     }
 
-    private UserResponse mapToUserResponse(User user) {
+    private UserResponse mapToUserResponse(Guest guest) {
         return UserResponse.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .name(user.getName())
-                .role(user.getRole().name())
+                .id(guest.getId())
+                .email(guest.getEmail())
+                .name(guest.getName())
+                .role(guest.getRole().name())
                 .build();
     }
 }
