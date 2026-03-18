@@ -218,7 +218,6 @@ git commit -m "feat(dto): 更新 RegisterRequest 添加 phone, country 字段和
 package com.hotel.security;
 
 import com.hotel.entity.Guest;
-import com.hotel.entity.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
@@ -268,7 +267,8 @@ public class GuestDetailsImpl implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return guest.getStatus() == com.hotel.entity.GuestStatus.ACTIVE;
+        // 添加 null 检查防止 NPE
+        return guest.getStatus() != null && guest.getStatus() == com.hotel.entity.GuestStatus.ACTIVE;
     }
 }
 ```
@@ -287,7 +287,48 @@ git commit -m "feat(security): 创建 GuestDetailsImpl 实现 UserDetails"
 
 ---
 
-### Task 5: 创建 GuestDetailsService
+### Task 5: 更新 JwtUtil 支持 GuestDetailsImpl
+
+**文件:**
+- Modify: `src/main/java/com/hotel/util/JwtUtil.java`
+
+- [ ] **Step 1: 更新 generateToken 方法支持 GuestDetailsImpl**
+
+将现有的 `generateToken(UserDetails userDetails)` 方法更新为:
+
+```java
+public String generateToken(UserDetails userDetails) {
+    Map<String, Object> claims = new HashMap<>();
+    if (userDetails instanceof com.hotel.security.UserDetailsImpl) {
+        com.hotel.security.UserDetailsImpl customUserDetails = (com.hotel.security.UserDetailsImpl) userDetails;
+        claims.put("id", customUserDetails.getId());
+        claims.put("role", customUserDetails.getRole());
+    } else if (userDetails instanceof com.hotel.security.GuestDetailsImpl) {
+        com.hotel.security.GuestDetailsImpl guestDetails = (com.hotel.security.GuestDetailsImpl) userDetails;
+        claims.put("id", guestDetails.getGuest().getId());
+        claims.put("role", guestDetails.getGuest().getRole().name());
+    }
+    return createToken(claims, userDetails.getUsername());
+}
+```
+
+注意: 这个修改保持了向后兼容性，原有的 UserDetailsImpl 仍然正常工作。
+
+- [ ] **Step 2: 编译验证**
+
+运行: `mvn compile`
+Expected: 编译成功
+
+- [ ] **Step 3: Git commit**
+
+```bash
+git add src/main/java/com/hotel/util/JwtUtil.java
+git commit -m "feat(util): JwtUtil 支持 GuestDetailsImpl"
+```
+
+---
+
+### Task 6: 创建 GuestDetailsService
 
 **文件:**
 - Create: `src/main/java/com/hotel/security/GuestDetailsService.java`
@@ -340,7 +381,7 @@ git commit -m "feat(security): 创建 GuestDetailsService 从 Guest 表加载用
 
 ---
 
-### Task 6: 更新 SecurityConfig
+### Task 7: 更新 SecurityConfig
 
 **文件:**
 - Modify: `src/main/java/com/hotel/config/SecurityConfig.java`
@@ -398,7 +439,7 @@ git commit -m "feat(config): 更新 SecurityConfig 使用 GuestDetailsService"
 
 ---
 
-### Task 7: 更新 AuthService 注册逻辑
+### Task 8: 更新 AuthService 注册逻辑
 
 **文件:**
 - Modify: `src/main/java/com/hotel/service/AuthService.java`
@@ -512,7 +553,7 @@ git commit -m "feat(service): 更新 AuthService 使用 GuestRepository"
 
 ---
 
-### Task 8: 更新 UserResponse DTO
+### Task 9: 更新 UserResponse DTO
 
 **文件:**
 - Modify: `src/main/java/com/hotel/dto/UserResponse.java`
@@ -563,7 +604,7 @@ git commit -m "feat(dto): 更新 UserResponse 添加 phone, country 字段"
 
 ---
 
-### Task 9: 后端集成测试
+### Task 10: 后端集成测试
 
 **文件:**
 - Test: 通过 curl 或 Postman 测试
@@ -622,7 +663,7 @@ git commit --allow-empty -m "test: 后端注册和登录功能测试通过"
 
 ---
 
-### Task 10: 更新前端类型定义
+### Task 11: 更新前端类型定义
 
 **文件:**
 - Modify: `frontend/src/types/auth.ts`
@@ -661,7 +702,7 @@ git commit -m "feat(types): 更新 User 和 RegisterRequest 类型定义"
 
 ---
 
-### Task 11: 更新前端 auth.ts
+### Task 12: 更新前端 auth.ts
 
 **文件:**
 - Modify: `frontend/src/utils/auth.ts`
@@ -702,7 +743,7 @@ git commit -m "feat(utils): 更新 register 函数接受完整参数"
 
 ---
 
-### Task 12: 更新 Login.vue 添加注册表单
+### Task 13: 更新 Login.vue 添加注册表单
 
 **文件:**
 - Modify: `frontend/src/views/Login.vue`
@@ -813,8 +854,10 @@ const handleRegister = async () => {
 
     ElMessage.success('注册成功！正在跳转...')
 
-    // 获取保存的重定向路径
-    const redirectPath = localStorage.getItem('redirectPath') || '/browse-rooms'
+    // 获取保存的重定向路径（优先使用 localStorage，其次使用 URL 查询参数）
+    const redirectPath = localStorage.getItem('redirectPath') ||
+                         router.currentRoute.value.query.redirect as string ||
+                         '/browse-rooms'
     localStorage.removeItem('redirectPath')
     router.push(redirectPath)
   } catch (error: any) {
@@ -830,10 +873,12 @@ const handleRegister = async () => {
 
 ```typescript
 const handleLogin = async () => {
-  // ... 现有代码 ...
+  // ... 现有登录逻辑代码 ...
 
-  // 获取保存的重定向路径
-  const redirectPath = localStorage.getItem('redirectPath') || '/browse-rooms'
+  // 获取保存的重定向路径（优先使用 localStorage，其次使用 URL 查询参数）
+  const redirectPath = localStorage.getItem('redirectPath') ||
+                       router.currentRoute.value.query.redirect as string ||
+                       '/browse-rooms'
   localStorage.removeItem('redirectPath')
 
   // 根据用户角色跳转
@@ -845,6 +890,10 @@ const handleLogin = async () => {
   }
 }
 ```
+
+注意: 这确保了重定向在两种情况下都能工作：
+1. 路由守卫保存的 redirectPath
+2. URL 查询参数中的 redirect（如 ?redirect=/bookings/new）
 
 - [ ] **Step 7: 更新模板添加标签页和注册表单**
 
@@ -996,7 +1045,7 @@ git commit -m "feat(views): Login.vue 添加注册标签页和表单"
 
 ---
 
-### Task 13: 添加路由守卫
+### Task 14: 添加路由守卫
 
 **文件:**
 - Modify: `frontend/src/router/index.ts`
@@ -1062,7 +1111,7 @@ git commit -m "feat(router): 添加路由守卫和重定向支持"
 
 ---
 
-### Task 14: 更新 BookingWizard.vue 自动填充
+### Task 15: 更新 BookingWizard.vue 自动填充
 
 **文件:**
 - Modify: `frontend/src/views/BookingWizard.vue`
@@ -1119,7 +1168,7 @@ git commit -m "feat(views): BookingWizard 添加客人信息自动填充"
 
 ---
 
-### Task 15: 确认 API 401 拦截器
+### Task 16: 确认 API 401 拦截器
 
 **文件:**
 - Check: `frontend/src/api/api.ts`
@@ -1154,7 +1203,7 @@ git commit -m "fix(api): 确保 401 拦截器正确处理"
 
 ---
 
-### Task 16: 前端集成测试
+### Task 17: 前端集成测试
 
 **文件:**
 - Test: 浏览器手动测试
@@ -1221,7 +1270,7 @@ git commit --allow-empty -m "test: 前端注册和自动填充功能测试通过
 
 ---
 
-### Task 17: 端到端测试
+### Task 18: 端到端测试
 
 **文件:**
 - Test: 完整流程测试
@@ -1252,7 +1301,7 @@ git commit --allow-empty -m "test: 端到端注册和预订流程测试通过"
 
 ---
 
-### Task 18: 文档更新
+### Task 19: 文档更新
 
 **文件:**
 - Update: `E:\project\hotel\问题.md` (如果需要)
