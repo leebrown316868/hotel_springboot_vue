@@ -197,6 +197,8 @@ public class BookingServiceImpl implements BookingService {
 
         bookingRepository.save(booking);
         log.info("Cancelled booking {}", id);
+
+        notificationHelper.notifyBookingCancelled(booking);
     }
 
     @Override
