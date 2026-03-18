@@ -24,6 +24,7 @@ import com.hotel.repository.BookingRepository;
 import com.hotel.repository.GuestRepository;
 import com.hotel.repository.RoomRepository;
 import com.hotel.service.BookingService;
+import com.hotel.util.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -51,6 +52,7 @@ public class BookingServiceImpl implements BookingService {
     private final RoomRepository roomRepository;
     private final BookingMapper bookingMapper;
     private final RoomMapper roomMapper;
+    private final NotificationHelper notificationHelper;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
