@@ -17,7 +17,6 @@
 
 ### 修改文件
 - `src/main/java/com/hotel/repository/UserRepository.java` - 添加按角色查询方法
-- `src/main/java/com/hotel/repository/GuestRepository.java` - 添加按角色查询方法
 - `src/main/java/com/hotel/service/impl/BookingServiceImpl.java` - 添加通知调用
 
 ---
@@ -54,41 +53,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 2: 扩展 GuestRepository 添加按角色查询
-
-**Files:**
-- Modify: `src/main/java/com/hotel/repository/GuestRepository.java`
-
-- [ ] **Step 1: 添加按角色查询方法**
-
-```java
-// 在 GuestRepository 接口中添加以下方法
-import com.hotel.entity.UserRole;
-
-List<Guest> findByRole(UserRole role);
-```
-
-- [ ] **Step 2: 验证编译**
-
-Run: `cd E:\project\hotel && mvn compile -q`
-Expected: 编译成功，无错误
-
-- [ ] **Step 3: 提交更改**
-
-```bash
-cd E:\project\hotel
-git add src/main/java/com/hotel/repository/GuestRepository.java
-git commit -m "feat(repository): 添加 Guest 按角色查询方法
-
-- 添加 findByRole 方法用于获取指定角色的客户列表
-- 用于通知系统获取客户信息
-
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
-```
-
----
-
-## Task 3: 创建 NotificationHelper 工具类
+## Task 2: 创建 NotificationHelper 工具类
 
 **Files:**
 - Create: `src/main/java/com/hotel/util/NotificationHelper.java`
@@ -101,9 +66,9 @@ package com.hotel.util;
 import com.hotel.entity.Booking;
 import com.hotel.entity.Guest;
 import com.hotel.entity.NotificationType;
+import com.hotel.entity.RoomType;
 import com.hotel.entity.User;
 import com.hotel.entity.UserRole;
-import com.hotel.repository.GuestRepository;
 import com.hotel.repository.UserRepository;
 import com.hotel.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -124,7 +89,6 @@ public class NotificationHelper {
 
     private final NotificationService notificationService;
     private final UserRepository userRepository;
-    private final GuestRepository guestRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
 
@@ -138,7 +102,7 @@ public class NotificationHelper {
             String message = String.format(
                 "您的预订 %s 已创建，%s，%s入住，%s退房",
                 booking.getBookingNumber(),
-                booking.getRoom().getRoomType().getName(),
+                getRoomTypeName(booking.getRoomType()),
                 booking.getCheckInDate().format(DATE_FORMATTER),
                 booking.getCheckOutDate().format(DATE_FORMATTER)
             );
@@ -250,9 +214,27 @@ public class NotificationHelper {
     private List<String> getStaffEmails() {
         List<User> staff = userRepository.findByRole(UserRole.STAFF);
         List<User> admin = userRepository.findByRole(UserRole.ADMIN);
-        return Stream.concat(staff.stream(), admin.stream())
+        List<String> emails = Stream.concat(staff.stream(), admin.stream())
                 .map(User::getEmail)
                 .toList();
+
+        if (emails.isEmpty()) {
+            log.warn("No staff or admin users found for notification");
+        }
+
+        return emails;
+    }
+
+    /**
+     * 获取房型中文名称
+     */
+    private String getRoomTypeName(RoomType type) {
+        return switch (type) {
+            case SINGLE -> "单人间";
+            case DOUBLE -> "双人间";
+            case SUITE -> "套房";
+            case DELUXE -> "豪华间";
+        };
     }
 }
 ```
@@ -279,7 +261,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 4: 在 BookingServiceImpl 中注入 NotificationHelper
+## Task 3: 在 BookingServiceImpl 中注入 NotificationHelper
 
 **Files:**
 - Modify: `src/main/java/com/hotel/service/impl/BookingServiceImpl.java:47-53`
@@ -314,7 +296,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 5: 在预订创建方法中添加通知
+## Task 4: 在预订创建方法中添加通知
 
 **Files:**
 - Modify: `src/main/java/com/hotel/service/impl/BookingServiceImpl.java:148-151`
@@ -359,7 +341,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 6: 在预订取消方法中添加通知
+## Task 5: 在预订取消方法中添加通知
 
 **Files:**
 - Modify: `src/main/java/com/hotel/service/impl/BookingServiceImpl.java`
@@ -397,7 +379,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 7: 在入住方法中添加通知
+## Task 6: 在入住方法中添加通知
 
 **Files:**
 - Modify: `src/main/java/com/hotel/service/impl/BookingServiceImpl.java`
@@ -435,7 +417,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 8: 在退房方法中添加通知
+## Task 7: 在退房方法中添加通知
 
 **Files:**
 - Modify: `src/main/java/com/hotel/service/impl/BookingServiceImpl.java`
@@ -473,7 +455,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 ---
 
-## Task 9: 编译和重启后端验证
+## Task 8: 编译和重启后端验证
 
 **Files:**
 - None (验证任务)
@@ -501,7 +483,7 @@ Expected: 返回 JSON 格式的设置数据
 
 ---
 
-## Task 10: 功能测试
+## Task 9: 功能测试
 
 **Files:**
 - None (测试任务)
