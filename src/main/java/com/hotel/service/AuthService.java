@@ -89,8 +89,10 @@ public class AuthService {
     private UserResponse mapToUserResponse(Guest guest) {
         return UserResponse.builder()
                 .id(guest.getId())
-                .email(guest.getEmail())
                 .name(guest.getName())
+                .email(guest.getEmail())
+                .phone(guest.getPhone())
+                .country(guest.getCountry())
                 .role(guest.getRole().name())
                 .build();
     }
