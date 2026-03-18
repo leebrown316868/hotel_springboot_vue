@@ -56,8 +56,8 @@ public class Guest {
     private LocalDateTime updatedAt;
 
     // 新增字段
-    @Column(nullable = false)
-    private String password;
+    @Column
+    private String password; // nullable: 只有注册用户才有密码，历史客人记录为空
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -65,9 +65,22 @@ public class Guest {
 }
 ```
 
+**重要说明**:
+- `password` 字段设置为 nullable，因为现有的 `guests` 表已有预订记录（通过后台创建），这些记录没有密码
+- 只有通过网页注册的用户才会有密码
+- 历史客人记录如果需要登录，需要通过"忘记密码"流程设置密码
+
 **数据库迁移**:
-- 添加 `password` 字段 (VARCHAR(255), NOT NULL)
-- 添加 `role` 字段 (VARCHAR(20), NOT NULL, DEFAULT 'CUSTOMER')
+```sql
+-- 添加 role 字段（有默认值，可以先添加）
+ALTER TABLE guests ADD COLUMN role VARCHAR(20) DEFAULT 'CUSTOMER' NOT NULL;
+
+-- 添加 password 字段（nullable，允许现有记录为空）
+ALTER TABLE guests ADD COLUMN password VARCHAR(255);
+
+-- 为现有管理员/员工记录创建密码（如果需要从 User 表迁移）
+-- 这部分在数据迁移章节中详细说明
+```
 
 #### 枚举定义
 
@@ -94,20 +107,126 @@ public enum UserRole {
 
 ```
 POST /api/auth/register
-请求体: {
+Content-Type: application/json
+
+请求体:
+{
   "name": "张三",
   "email": "zhangsan@example.com",
-  "password": "password123",
+  "password": "Password@123",  // 至少8位，包含大小写字母和数字
   "phone": "+86 138 0000 0000",
   "country": "中国"
 }
-响应: {
-  "token": "jwt_token",
-  "user": { ... }
+
+成功响应 (201 Created):
+{
+  "code": 200,
+  "message": "Success",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": 1,
+      "name": "张三",
+      "email": "zhangsan@example.com",
+      "phone": "+86 138 0000 0000",
+      "country": "中国",
+      "role": "CUSTOMER"
+    }
+  }
+}
+
+失败响应 (400 Bad Request):
+{
+  "code": 400,
+  "message": "Email already exists",
+  "data": null
 }
 ```
 
-### 2.3 前端组件设计
+**密码加密**:
+- 使用 BCrypt 算法加密密码（`BCryptPasswordEncoder`）
+- 加密在注册时进行：`passwordEncoder.encode(request.getPassword())`
+- 登录时验证：`passwordEncoder.matches(request.getPassword(), user.getPassword())`
+
+### 2.3 输入验证规则
+
+**后端验证 (RegisterRequest)**:
+```java
+@Data
+public class RegisterRequest {
+    @NotBlank(message = "姓名不能为空")
+    @Size(min = 2, max = 100, message = "姓名长度必须在2-100字符之间")
+    private String name;
+
+    @NotBlank(message = "邮箱不能为空")
+    @Email(message = "邮箱格式不正确")
+    private String email;
+
+    @NotBlank(message = "密码不能为空")
+    @Size(min = 8, message = "密码长度不能少于8位")
+    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$",
+             message = "密码必须包含大小写字母和数字")
+    private String password;
+
+    @NotBlank(message = "电话不能为空")
+    @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$",
+             message = "电话号码格式不正确")
+    private String phone;
+
+    @NotBlank(message = "国家不能为空")
+    @Size(min = 1, max = 50, message = "国家名称长度必须在1-50字符之间")
+    private String country;
+}
+```
+
+**前端验证**:
+```typescript
+const registerRules = {
+  name: [
+    { required: true, message: '请输入姓名', trigger: 'blur' },
+    { min: 2, max: 100, message: '姓名长度在2-100字符之间', trigger: 'blur' }
+  ],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 8, message: '密码长度不能少于8位', trigger: 'blur' },
+    {
+      pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
+      message: '密码必须包含大小写字母和数字',
+      trigger: 'blur'
+    }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入密码', trigger: 'blur' },
+    {
+      validator: (rule: any, value: string, callback: any) => {
+        if (value !== registerForm.password) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  phone: [
+    { required: true, message: '请输入联系电话', trigger: 'blur' },
+    {
+      pattern: /^\+?[1-9]\d{1,14}$/,
+      message: '请输入正确的电话号码格式',
+      trigger: 'blur'
+    }
+  ],
+  country: [
+    { required: true, message: '请选择国家/地区', trigger: 'change' }
+  ]
+}
+```
+
+### 2.4 前端组件设计
 
 #### 注册界面 (Login.vue 扩展)
 
@@ -151,13 +270,152 @@ POST /api/auth/register
 // 从 localStorage 读取当前用户
 const user = ref<User | null>(getUser())
 
+// 组件挂载时自动填充客人信息
+onMounted(() => {
+  if (user.value) {
+    guestForm.name = user.value.name || ''
+    guestForm.phone = user.value.phone || ''
+    guestForm.email = user.value.email || ''
+  }
+})
+
 // 客人信息表单
 const guestForm = reactive({
-  name: user.value?.name || '',
-  phone: user.value?.phone || '',
-  email: user.value?.email || '',
+  name: '',
+  phone: '',
+  email: '',
   notes: ''
 })
+```
+
+### 2.5 路由守卫与重定向
+
+**需要认证的路由**:
+- `/bookings/new` - 预订页面
+- `/my-bookings` - 我的订单
+- `/profile` - 个人资料
+- `/history-feedback` - 历史反馈
+
+**路由守卫实现** (`frontend/src/router/index.ts`):
+```typescript
+router.beforeEach((to, from, next) => {
+  const requiresAuth = to.meta.requiresAuth
+  const isPublic = to.meta.public
+  const isAuthenticated = !!localStorage.getItem('token')
+
+  // 公开页面直接放行
+  if (isPublic) {
+    next()
+    return
+  }
+
+  // 需要认证的页面
+  if (requiresAuth && !isAuthenticated) {
+    // 保存目标路径，登录后跳转
+    localStorage.setItem('redirectPath', to.fullPath)
+    next({ name: 'login', query: { redirect: to.fullPath } })
+    return
+  }
+
+  next()
+})
+```
+
+**登录/注册后重定向** (`frontend/src/views/Login.vue`):
+```typescript
+const handleLogin = async () => {
+  // ... 登录逻辑 ...
+
+  // 获取保存的重定向路径
+  const redirectPath = localStorage.getItem('redirectPath') || '/browse-rooms'
+  localStorage.removeItem('redirectPath')
+
+  // 根据用户角色跳转
+  if (userRole === 'ADMIN' || userRole === 'STAFF') {
+    router.push('/dashboard')
+  } else {
+    router.push(redirectPath)
+  }
+}
+
+const handleRegister = async () => {
+  // ... 注册逻辑 ...
+
+  // 注册成功后同样重定向
+  const redirectPath = localStorage.getItem('redirectPath') || '/browse-rooms'
+  localStorage.removeItem('redirectPath')
+  router.push(redirectPath)
+}
+```
+
+### 2.6 Token 管理
+
+**Token 配置**:
+- 存储位置: `localStorage`
+- Token 类型: JWT (HS256)
+- 过期时间: 30天
+- 刷新机制: 无（token 过期后需要重新登录）
+
+**Token 使用**:
+```typescript
+// api.ts - Axios 拦截器
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token 过期或无效，清除本地数据并跳转登录
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      router.push('/login')
+    }
+    return Promise.reject(error)
+  }
+)
+```
+
+### 2.7 错误处理
+
+**错误响应格式**:
+```typescript
+interface ErrorResponse {
+  code: number
+  message: string
+  data: null
+}
+```
+
+**常见错误码**:
+| 错误码 | 场景 | 用户提示 |
+|--------|------|----------|
+| 400 | 邮箱已存在 | "该邮箱已被注册，请使用其他邮箱或直接登录" |
+| 400 | 密码不符合要求 | "密码必须至少8位，包含大小写字母和数字" |
+| 400 | 验证失败 | 显示具体字段验证错误 |
+| 401 | Token 过期 | "登录已过期，请重新登录" |
+| 500 | 服务器错误 | "服务器错误，请稍后重试" |
+
+**前端错误处理**:
+```typescript
+const handleRegister = async () => {
+  loading.value = true
+  try {
+    await register(registerForm.email, registerForm.password, registerForm.name)
+    ElMessage.success('注册成功！')
+    // ... 跳转逻辑 ...
+  } catch (error: any) {
+    const message = error.response?.data?.message || '注册失败，请重试'
+    ElMessage.error(message)
+  } finally {
+    loading.value = false
+  }
+}
 ```
 
 ---
@@ -216,28 +474,39 @@ const guestForm = reactive({
 - [ ] 创建 UserRole 枚举
 - [ ] 数据库迁移脚本（ALTER TABLE guests ADD COLUMN...）
 - [ ] 修改 RegisterRequest DTO（添加 phone, country）
+- [ ] 添加输入验证规则（@Pattern 注解）
 - [ ] 修改 AuthService 使用 GuestRepository
 - [ ] 更新 SecurityConfig 的用户加载逻辑
+- [ ] 实现 BCrypt 密码加密
 - [ ] 单元测试：注册功能
 - [ ] 单元测试：登录功能
+- [ ] 单元测试：密码加密验证
 
 ### 4.2 前端任务
 
 - [ ] Login.vue 添加注册标签页和表单
-- [ ] 添加表单验证（密码匹配、必填项）
-- [ ] 更新 RegisterRequest 类型定义
-- [ ] 添加路由守卫（预订页面检测登录）
+- [ ] 添加表单验证（密码匹配、强度检查、必填项）
+- [ ] 更新 RegisterRequest 类型定义（添加 phone, country）
+- [ ] 添加路由守卫（检测登录状态和保存重定向路径）
 - [ ] BookingWizard.vue 实现自动填充
-- [ ] 登录后重定向逻辑
+- [ ] 登录/注册后重定向逻辑
+- [ ] Axios 拦截器处理 401 错误
 - [ ] 错误处理和用户提示
 
 ### 4.3 测试任务
 
 - [ ] 注册新用户端到端测试
 - [ ] 注册后自动登录测试
+- [ ] 密码强度验证测试（太短、缺少大小写等）
+- [ ] 邮箱重复注册测试
+- [ ] 密码不匹配验证测试
 - [ ] 预订页面自动填充测试
-- [ ] 未登录用户访问预订页重定向测试
+- [ ] 自动填充数据准确性测试
 - [ ] 修改预订信息不更新个人资料测试
+- [ ] 未登录用户访问预订页重定向测试
+- [ ] 登录后返回原页面测试
+- [ ] Token 过期后跳转登录测试
+- [ ] 并发注册测试（相同邮箱）
 
 ---
 
@@ -276,12 +545,135 @@ const guestForm = reactive({
 | 风险 | 影响 | 缓解措施 |
 |------|------|----------|
 | 现有 User 表数据迁移 | 中 | 保留 User 表作为备份，提供数据迁移脚本 |
-| Guests 表添加字段可能影响现有功能 | 低 | 使用默认值，添加 nullable=false 前先填充数据 |
+| Guests 表添加字段可能影响现有功能 | 低 | password 字段设置为 nullable，允许现有记录为空 |
 | 前后端类型不一致 | 低 | 统一 TypeScript 类型定义 |
 
 ---
 
-## 七、后续优化
+## 七、数据迁移策略
+
+### 7.1 User 表到 Guest 表迁移
+
+**迁移场景**: 如果需要将现有 User 表的用户迁移到 Guest 表
+
+**迁移脚本**:
+```sql
+-- 步骤 1: 备份现有数据
+CREATE TABLE users_backup AS SELECT * FROM users;
+CREATE TABLE guests_backup AS SELECT * FROM guests;
+
+-- 步骤 2: 为已存在的邮箱用户在 Guest 表创建记录（如果不存在）
+INSERT INTO guests (name, email, phone, country, password, role, status, total_bookings, created_at, updated_at)
+SELECT
+    u.name,
+    u.email,
+    COALESCE(g.phone, ''),  -- 如果 guest 已有电话，使用 guest 的
+    COALESCE(g.country, '中国'),
+    u.password,
+    u.role,
+    'ACTIVE',
+    0,
+    u.created_at,
+    u.updated_at
+FROM users u
+LEFT JOIN guests g ON g.email = u.email
+WHERE NOT EXISTS (
+    SELECT 1 FROM guests WHERE guests.email = u.email AND guests.password IS NOT NULL
+);
+
+-- 步骤 3: 验证迁移结果
+SELECT
+    (SELECT COUNT(*) FROM users) as user_count,
+    (SELECT COUNT(*) FROM guests WHERE password IS NOT NULL) as migrated_guest_count;
+```
+
+### 7.2 迁移验证
+
+**验证步骤**:
+1. 确认 User 表中的所有用户都在 Guest 表中有对应记录
+2. 测试迁移后用户的登录功能
+3. 确认原有预订记录关联正确
+4. 验证用户角色正确迁移
+
+### 7.3 回滚方案
+
+如果迁移出现问题，执行以下回滚：
+```sql
+-- 恢复 Guest 表
+DROP TABLE guests;
+ALTER TABLE guests_backup RENAME TO guests;
+
+-- 恢复 User 表
+DROP TABLE users;
+ALTER TABLE users_backup RENAME TO users;
+```
+
+### 7.4 渐进式迁移方案
+
+为了降低风险，可以采用渐进式迁移：
+
+**阶段 1**: 新系统并行运行
+- 保留 User 表和 Guest 表
+- 注册时同时创建两个表的记录
+
+**阶段 2**: 逐步迁移
+- 优先迁移活跃用户
+- 老用户登录时自动迁移到 Guest 表
+
+**阶段 3**: 完全切换
+- 确认所有用户迁移完成后
+- 停止写入 User 表
+
+**阶段 4**: 清理
+- 经过一段观察期后
+- 删除 User 表
+
+---
+
+## 八、重要设计决策说明
+
+### 8.1 为什么使用 Guests 表统一管理？
+
+**决策**: 使用 guests 表同时存储认证信息和客人信息
+
+**权衡考虑**:
+- ✅ **优点**: 简化数据模型，避免冗余，注册即完成
+- ⚠️ **限制**: 预订客人可能不需要注册账号
+- ✅ **缓解**: 允许预订时修改客人信息（不影响注册信息）
+
+**适用场景**: 这个设计适合中小型酒店，大部分预订来自注册用户。如果需要支持大量未注册用户预订，可以考虑后续扩展"快速预订"功能。
+
+### 8.2 前端状态管理说明
+
+**当前方案**: 使用 localStorage 存储用户信息和 token
+
+**存储内容**:
+```typescript
+localStorage.setItem('token', jwtToken)
+localStorage.setItem('user', JSON.stringify({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  country: user.country,
+  role: user.role
+}))
+```
+
+**更新机制**:
+- 登录/注册时写入
+- 退出登录时清除
+- Token 过期时清除
+- 如果用户修改个人资料，同步更新 localStorage
+
+**注意事项**:
+- localStorage 在不同标签页之间同步
+- 敏感信息（密码）永不存储在 localStorage
+- Token 通过 HTTP Header 发送，不暴露在 URL 中
+
+---
+
+## 九、后续优化
 
 - [ ] 添加第三方登录（微信、支付宝）
 - [ ] 手机号验证码登录
