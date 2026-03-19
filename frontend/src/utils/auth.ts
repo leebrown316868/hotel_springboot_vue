@@ -1,5 +1,5 @@
 import api from './api'
-import type { AuthRequest, AuthResponse, RegisterRequest, User } from '../types/auth'
+import type { AuthRequest, AuthResponse, RegisterRequest, User, ApiResponse } from '../types/auth'
 
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
   const response = await api.post<ApiResponse<AuthResponse>>('/api/auth/login', { email, password })
@@ -12,8 +12,8 @@ export const login = async (email: string, password: string): Promise<AuthRespon
   return response.data.data
 }
 
-export const register = async (email: string, password: string, name: string): Promise<AuthResponse> => {
-  const response = await api.post<ApiResponse<AuthResponse>>('/api/auth/register', { email, password, name })
+export const register = async (email: string, password: string, name: string, phone: string, country: string): Promise<AuthResponse> => {
+  const response = await api.post<ApiResponse<AuthResponse>>('/api/auth/register', { email, password, name, phone, country })
   const { token, user } = response.data.data
 
   // Store token and user info

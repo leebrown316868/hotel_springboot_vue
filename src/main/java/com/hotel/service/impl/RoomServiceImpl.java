@@ -28,10 +28,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class RoomServiceImpl implements RoomService {
 
@@ -156,6 +160,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional
     public String uploadRoomImage(Long roomId, MultipartFile file) throws IOException {
         // 验证房间是否存在
         Room room = roomRepository.findById(roomId)
@@ -192,7 +197,54 @@ public class RoomServiceImpl implements RoomService {
         Path filePath = Paths.get(roomDirPath, filename);
         Files.write(filePath, file.getBytes());
 
-        // 返回访问URL
-        return "/uploads/rooms/" + roomId + "/" + filename;
+        // 生成访问URL
+        String imageUrl = "/uploads/rooms/" + roomId + "/" + filename;
+
+        // 更新房间的图片字段（JSON数组格式）
+        String existingImages = room.getImages();
+        String newImages;
+        if (existingImages == null || existingImages.trim().isEmpty()) {
+            newImages = "[\"" + imageUrl + "\"]";
+        } else {
+            // 检查是否是 JSON 数组格式
+            if (existingImages.startsWith("[")) {
+                newImages = existingImages.substring(0, existingImages.length() - 1) + ",\"" + imageUrl + "\"]";
+            } else {
+                // 如果是旧格式，转换为 JSON 数组
+                newImages = "[\"" + existingImages + "\",\"" + imageUrl + "\"]";
+            }
+        }
+        room.setImages(newImages);
+        room.setUpdatedAt(LocalDateTime.now());
+        roomRepository.save(room);
+
+        log.info("Updated room {} with new image: {}", roomId, imageUrl);
+
+        return imageUrl;
+    }
+
+    @Override
+    @Transactional
+    public void batchDeleteRooms(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new IllegalArgumentException("删除ID列表不能为空");
+        }
+
+        // 查询所有要删除的房间
+        List<Room> rooms = roomRepository.findAllById(ids);
+
+        if (rooms.size() != ids.size()) {
+            throw new RoomNotFoundException("部分房间不存在");
+        }
+
+        // 验证每个房间的状态
+        for (Room room : rooms) {
+            if (room.getStatus() == RoomStatus.OCCUPIED) {
+                throw new InvalidRoomStatusException("房间 " + room.getNumber() + " 已入住，不能删除");
+            }
+        }
+
+        // 批量删除
+        roomRepository.deleteAllById(ids);
     }
 }

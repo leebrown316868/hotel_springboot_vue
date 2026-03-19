@@ -1,6 +1,6 @@
 import api from '@/utils/api'
+import type { ApiResponse } from '@/types/api'
 import type {
-  ApiResponse,
   RoomTypeListResponse,
   RoomTypeQueryParams,
   RoomTypeResponse,

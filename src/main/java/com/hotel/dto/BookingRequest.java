@@ -44,6 +44,7 @@ public class BookingRequest {
         private String name;
         private String phone;
         private String email;
+        private String country;
         private String notes;
     }
 }

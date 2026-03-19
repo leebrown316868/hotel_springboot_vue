@@ -1,6 +1,5 @@
 package com.hotel.dto;
 
-import com.hotel.entity.RoomType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -35,15 +34,14 @@ public class RoomSearchRequest {
     // 接收逗号分隔的房型字符串（如："DOUBLE,EXECUTIVE_SUITE"）
     private String roomTypesStr;
 
-    // 获取房型列表（将字符串转换为枚举列表）
-    public List<RoomType> getRoomTypes() {
+    // 获取房型列表（将字符串分割为字符串列表）
+    public List<String> getRoomTypes() {
         if (roomTypesStr == null || roomTypesStr.trim().isEmpty()) {
             return null;
         }
         return List.of(roomTypesStr.split(","))
                 .stream()
                 .map(String::trim)
-                .map(RoomType::valueOf)
                 .collect(Collectors.toList());
     }
 }

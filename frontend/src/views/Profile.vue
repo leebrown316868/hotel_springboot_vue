@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getProfile, updateProfile } from '@/api/profile'
 import type { Profile } from '@/types/profile'
-import Layout from '../components/Layout.vue'
+import SimpleHeader from '../components/SimpleHeader.vue'
 import { ElMessage } from 'element-plus'
+import { logout } from '@/utils/auth'
 
+const router = useRouter()
 const loading = ref(false)
 const saving = ref(false)
 const profileForm = reactive<Profile>({
@@ -38,7 +41,6 @@ const handleSave = async () => {
     const response = await updateProfile({
       name: profileForm.name,
       phone: profileForm.phone || undefined,
-      address: profileForm.address || undefined,
       nationality: profileForm.nationality || undefined,
       preferencesEnabled: profileForm.preferencesEnabled
     })
@@ -57,14 +59,26 @@ const handleSave = async () => {
   }
 }
 
+const handleLogout = async () => {
+  try {
+    await logout()
+    ElMessage.success('登出成功')
+    router.push('/about')
+  } catch (error) {
+    ElMessage.error('登出失败')
+  }
+}
+
 onMounted(() => {
   loadProfile()
 })
 </script>
 
 <template>
-  <Layout>
-    <div class="max-w-3xl mx-auto">
+  <div class="min-h-screen bg-gray-50">
+    <SimpleHeader />
+
+    <div class="max-w-3xl mx-auto px-4 py-8">
       <header class="mb-8">
         <h1 class="text-2xl font-bold text-gray-900">个人信息管理</h1>
         <p class="text-sm text-gray-500 mt-1">更新您的个人资料、联系方式和偏好设置</p>
@@ -113,19 +127,16 @@ onMounted(() => {
             </el-form-item>
           </div>
 
-          <el-form-item label="地址">
-            <el-input v-model="profileForm.address" size="large" />
-          </el-form-item>
-
           <el-form-item>
             <el-checkbox v-model="profileForm.preferencesEnabled">接收酒店优惠和促销通知</el-checkbox>
           </el-form-item>
 
-          <div class="pt-4 flex justify-end">
+          <div class="pt-4 flex justify-between">
+            <el-button size="large" @click="handleLogout">退出登录</el-button>
             <el-button type="primary" size="large" class="px-8" :loading="saving" @click="handleSave">保存更改</el-button>
           </div>
         </el-form>
       </div>
     </div>
-  </Layout>
+  </div>
 </template>

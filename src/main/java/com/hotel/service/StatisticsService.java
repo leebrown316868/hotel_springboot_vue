@@ -36,6 +36,15 @@ public interface StatisticsService {
     List<BookingTrendData> getBookingTrends(int days);
 
     /**
+     * 获取指定日期范围的预订趋势数据
+     * 
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @return 预订趋势数据列表
+     */
+    List<BookingTrendData> getBookingTrendsByRange(java.time.LocalDate startDate, java.time.LocalDate endDate);
+
+    /**
      * 获取最近预订摘要列表
      *
      * @param limit 返回数量限制（默认4条）

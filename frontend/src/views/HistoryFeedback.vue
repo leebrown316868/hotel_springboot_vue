@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { getMyCompletedBookings, createReview } from '@/api/review'
 import type { BookingReviewResponse } from '@/types/review'
-import Layout from '../components/Layout.vue'
+import SimpleHeader from '../components/SimpleHeader.vue'
 import { ElMessage } from 'element-plus'
 
 const loading = ref(false)
@@ -52,7 +52,7 @@ const submitReview = async () => {
       comment: currentReview.value.comment
     })
 
-    if (response.data.code === 201) {
+    if (response.data.code === 200 || response.status === 201) {
       ElMessage.success('感谢您的评价！')
       reviewDialogVisible.value = false
       // 重新加载订单列表
@@ -98,8 +98,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <Layout>
-    <div class="max-w-4xl mx-auto">
+  <div class="min-h-screen bg-slate-50">
+    <SimpleHeader />
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <header class="mb-8">
         <h1 class="text-2xl font-bold text-gray-900">历史记录与评价反馈</h1>
         <p class="text-sm text-gray-500 mt-1">查看您的入住历史并留下宝贵评价</p>
@@ -163,5 +164,5 @@ onMounted(() => {
         </span>
       </template>
     </el-dialog>
-  </Layout>
+  </div>
 </template>

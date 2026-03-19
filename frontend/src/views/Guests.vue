@@ -64,16 +64,18 @@ const loadGuests = async () => {
   loading.value = true
   try {
     const response = await getGuests({
-      page: currentPage.value,
+      page: currentPage.value - 1,  // 后端页码从0开始
       size: pageSize.value,
       search: searchQuery.value || undefined
     })
+
     if (response.code === 200 && response.data) {
-      guests.value = response.data.guests
-      total.value = response.data.total
-      totalPages.value = response.data.totalPages
+      guests.value = response.data.guests || []
+      total.value = response.data.total || 0
+      totalPages.value = response.data.totalPages || 0
     }
   } catch (error) {
+    console.error('Load guests error:', error)
     ElMessage.error('加载客户列表失败')
   } finally {
     loading.value = false
@@ -121,7 +123,7 @@ const getStatusType = (status: string) => {
     case 'INACTIVE':
       return 'info'
     default:
-      return ''
+      return 'info' as const
   }
 }
 
@@ -476,6 +478,17 @@ onMounted(() => {
             <el-tag :type="getBookingStatusType(scope.row.status)" size="small">
               {{ getBookingStatusText(scope.row.status) }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="评价" width="150">
+          <template #default="scope">
+            <template v-if="scope.row.reviewed">
+              <el-rate v-model="scope.row.rating" disabled show-score text-color="#ff9900" />
+              <div v-if="scope.row.comment" class="text-xs text-gray-500 mt-1">{{ scope.row.comment }}</div>
+            </template>
+            <template v-else>
+              <span class="text-gray-400 text-sm">未评价</span>
+            </template>
           </template>
         </el-table-column>
       </el-table>

@@ -22,4 +22,7 @@ public class BookingSummary {
     private String status;
     private BigDecimal totalPrice;
     private LocalDateTime createdAt;
+    private Boolean reviewed;
+    private Integer rating;
+    private String comment;
 }

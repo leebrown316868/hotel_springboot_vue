@@ -21,6 +21,7 @@ E:\project\hotel\src\main\java\com\hotel\dto\RegisterRequest.java
 E:\project\hotel\src\main\java\com\hotel\security\UserDetailsServiceImpl.java
 E:\project\hotel\src\main\java\com\hotel\exception\GlobalExceptionHandler.java
 E:\project\hotel\src\main\java\com\hotel\repository\SystemSettingsRepository.java
+E:\project\hotel\src\main\java\com\hotel\security\CompositeUserDetailsService.java
 E:\project\hotel\src\main\java\com\hotel\entity\RoomTypeEntity.java
 E:\project\hotel\src\main\java\com\hotel\repository\ReviewRepository.java
 E:\project\hotel\src\main\java\com\hotel\HotelApplication.java
@@ -33,6 +34,7 @@ E:\project\hotel\src\main\java\com\hotel\exception\RoomNotFoundException.java
 E:\project\hotel\src\main\java\com\hotel\migration\DatabaseMigration.java
 E:\project\hotel\src\main\java\com\hotel\service\impl\NotificationServiceImpl.java
 E:\project\hotel\src\main\java\com\hotel\dto\GuestResponse.java
+E:\project\hotel\src\main\java\com\hotel\security\GuestDetailsImpl.java
 E:\project\hotel\src\main\java\com\hotel\exception\RoomNotAvailableException.java
 E:\project\hotel\src\main\java\com\hotel\entity\SystemSettings.java
 E:\project\hotel\src\main\java\com\hotel\dto\RoomTypeRequest.java
@@ -69,6 +71,7 @@ E:\project\hotel\src\main\java\com\hotel\repository\BookingRepository.java
 E:\project\hotel\src\main\java\com\hotel\dto\AuthResponse.java
 E:\project\hotel\src\main\java\com\hotel\controller\RoomController.java
 E:\project\hotel\src\main\java\com\hotel\repository\UserRepository.java
+E:\project\hotel\src\main\java\com\hotel\dto\BatchDeleteRequest.java
 E:\project\hotel\src\main\java\com\hotel\config\FileUploadConfig.java
 E:\project\hotel\src\main\java\com\hotel\entity\PaymentStatus.java
 E:\project\hotel\src\main\java\com\hotel\service\RoomTypeService.java
@@ -112,6 +115,7 @@ E:\project\hotel\src\main\java\com\hotel\dto\PublicSettingsResponse.java
 E:\project\hotel\src\main\java\com\hotel\dto\SettingsRequest.java
 E:\project\hotel\src\main\java\com\hotel\entity\Review.java
 E:\project\hotel\src\main\java\com\hotel\mapper\RoomTypeMapper.java
+E:\project\hotel\src\main\java\com\hotel\security\GuestDetailsService.java
 E:\project\hotel\src\main\java\com\hotel\dto\RoomTypeStats.java
 E:\project\hotel\src\main\java\com\hotel\dto\BookingRequest.java
 E:\project\hotel\src\main\java\com\hotel\service\impl\RoomTypeServiceImpl.java
@@ -123,5 +127,6 @@ E:\project\hotel\src\main\java\com\hotel\exception\PaymentFailedException.java
 E:\project\hotel\src\main\java\com\hotel\dto\RoomRequest.java
 E:\project\hotel\src\main\java\com\hotel\service\impl\BookingServiceImpl.java
 E:\project\hotel\src\main\java\com\hotel\dto\SettingsResponse.java
+E:\project\hotel\src\main\java\com\hotel\util\NotificationHelper.java
 E:\project\hotel\src\main\java\com\hotel\entity\Notification.java
 E:\project\hotel\src\main\java\com\hotel\entity\BookingStatus.java

@@ -67,10 +67,37 @@ public class BookingController {
     @PostMapping
     public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
             @Valid @RequestBody BookingRequest request,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+            Authentication authentication) {
         log.info("Creating booking: {}", request);
 
-        Long userId = userDetails.getId();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            log.warn("User not authenticated for booking creation");
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<BookingResponse>builder()
+                            .code(401)
+                            .message("请先登录")
+                            .data(null)
+                            .build());
+        }
+
+        // 获取用户ID，支持 UserDetailsImpl 和 GuestDetailsImpl
+        Long userId;
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof UserDetailsImpl) {
+            userId = ((UserDetailsImpl) principal).getId();
+        } else if (principal instanceof com.hotel.security.GuestDetailsImpl) {
+            userId = ((com.hotel.security.GuestDetailsImpl) principal).getGuest().getId();
+        } else {
+            log.warn("Unknown principal type: {}", principal.getClass().getName());
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<BookingResponse>builder()
+                            .code(401)
+                            .message("请先登录")
+                            .data(null)
+                            .build());
+        }
+
         BookingResponse response = bookingService.create(request, userId);
 
         return ResponseEntity.ok(ApiResponse.<BookingResponse>builder()
@@ -85,15 +112,42 @@ public class BookingController {
     public ResponseEntity<ApiResponse<BookingListResponse>> getMyBookings(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        log.info("Fetching my bookings for user: {}", userDetails.getEmail());
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<BookingListResponse>builder()
+                            .code(401)
+                            .message("请先登录")
+                            .data(null)
+                            .build());
+        }
+
+        // 获取用户邮箱，支持 UserDetailsImpl 和 GuestDetailsImpl
+        String email;
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof UserDetailsImpl) {
+            email = ((UserDetailsImpl) principal).getEmail();
+        } else if (principal instanceof com.hotel.security.GuestDetailsImpl) {
+            email = ((com.hotel.security.GuestDetailsImpl) principal).getGuest().getEmail();
+        } else {
+            log.warn("Unknown principal type: {}", principal.getClass().getName());
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<BookingListResponse>builder()
+                            .code(401)
+                            .message("请先登录")
+                            .data(null)
+                            .build());
+        }
+
+        log.info("Fetching my bookings for user: {}", email);
 
         // 根据用户email查找对应的guest
-        Optional<Guest> guestOpt = guestRepository.findByEmail(userDetails.getEmail());
+        Optional<Guest> guestOpt = guestRepository.findByEmail(email);
 
         if (guestOpt.isEmpty()) {
             // 用户没有对应的guest记录，返回空列表
-            log.info("No guest found for user: {}, returning empty booking list", userDetails.getEmail());
+            log.info("No guest found for user: {}, returning empty booking list", email);
             BookingListResponse emptyResponse = new BookingListResponse();
             emptyResponse.setContent(List.of());
             emptyResponse.setTotalElements(0);
@@ -103,8 +157,13 @@ public class BookingController {
             return ResponseEntity.ok(ApiResponse.success(emptyResponse));
         }
 
+        Long guestId = guestOpt.get().getId();
+        log.info("Found guest for email {}: id={}, name={}", email, guestId, guestOpt.get().getName());
+
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        BookingListResponse response = bookingService.findByGuestId(guestOpt.get().getId(), pageable);
+        BookingListResponse response = bookingService.findByGuestId(guestId, pageable);
+
+        log.info("Returning {} bookings for guest_id={}", response.getContent().size(), guestId);
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -141,10 +200,18 @@ public class BookingController {
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<BookingResponse>> cancelBooking(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+            @AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
         log.info("Cancelling booking: {}", id);
 
-        Long userId = userDetails.getId();
+        Long userId;
+        if (userDetails instanceof UserDetailsImpl) {
+            userId = ((UserDetailsImpl) userDetails).getId();
+        } else if (userDetails instanceof com.hotel.security.GuestDetailsImpl) {
+            userId = ((com.hotel.security.GuestDetailsImpl) userDetails).getGuest().getId();
+        } else {
+            throw new RuntimeException("Unknown user principal type");
+        }
+        
         bookingService.cancelBooking(id, userId);
 
         return ResponseEntity.ok(ApiResponse.<BookingResponse>builder()
@@ -157,7 +224,7 @@ public class BookingController {
     @PatchMapping("/number/{bookingNumber}/cancel")
     public ResponseEntity<ApiResponse<BookingResponse>> cancelBookingByNumber(
             @PathVariable String bookingNumber,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+            @AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
         log.info("Cancelling booking: {}", bookingNumber);
 
         bookingService.cancelBookingByNumber(bookingNumber);

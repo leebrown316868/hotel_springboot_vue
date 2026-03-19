@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,34 +22,46 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<NotificationListResponse>> getNotifications(
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        NotificationListResponse response = notificationService.getUserNotifications(
-                userDetails.getEmail(), pageRequest);
+        String email = getEmailFromUserDetails(userDetails);
+        NotificationListResponse response = notificationService.getUserNotifications(email, pageRequest);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/unread-count")
     public ResponseEntity<ApiResponse<Integer>> getUnreadCount(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        Integer count = notificationService.getUnreadCount(userDetails.getEmail());
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = getEmailFromUserDetails(userDetails);
+        Integer count = notificationService.getUnreadCount(email);
         return ResponseEntity.ok(ApiResponse.success(count));
     }
 
     @PutMapping("/{id}/read")
     public ResponseEntity<ApiResponse<NotificationResponse>> markAsRead(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        NotificationResponse response = notificationService.markAsRead(id, userDetails.getEmail());
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = getEmailFromUserDetails(userDetails);
+        NotificationResponse response = notificationService.markAsRead(id, email);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/read-all")
     public ResponseEntity<ApiResponse<Void>> markAllAsRead(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        notificationService.markAllAsRead(userDetails.getEmail());
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = getEmailFromUserDetails(userDetails);
+        notificationService.markAllAsRead(email);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    private String getEmailFromUserDetails(UserDetails userDetails) {
+        if (userDetails instanceof UserDetailsImpl) {
+            return ((UserDetailsImpl) userDetails).getEmail();
+        } else if (userDetails instanceof com.hotel.security.GuestDetailsImpl) {
+            return ((com.hotel.security.GuestDetailsImpl) userDetails).getGuest().getEmail();
+        }
+        return userDetails.getUsername();
     }
 }

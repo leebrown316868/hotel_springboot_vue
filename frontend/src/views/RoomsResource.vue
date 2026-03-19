@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import Layout from '../components/Layout.vue'
 import { settingsApi } from '../api/settings'
-import { getRooms } from '../api/room'
+import { getRooms, batchDeleteRooms } from '../api/room'
 import { getActiveRoomTypes, updateRoomType } from '../api/roomType'
 import type { RoomTypeConfig, RoomTypeWithStats } from '../types/settings'
 import type { RoomResponse } from '../types/room'
@@ -17,6 +17,7 @@ const roomTypesList = ref<RoomTypeResponse[]>([])
 const rooms = ref<RoomResponse[]>([])
 const editDialogVisible = ref(false)
 const editingRoomType = ref<{ id: number; code: string } & RoomTypeConfig | null>(null)
+const selectedRooms = ref<RoomResponse[]>([])
 
 const searchQuery = ref('')
 const filterFloor = ref('')
@@ -95,6 +96,29 @@ const fetchRooms = async () => {
 
 const resetFilters = () => { searchQuery.value = ''; filterFloor.value = ''; filterType.value = ''; filterStatus.value = ''; fetchRooms() }
 
+const handleSelectionChange = (selection: RoomResponse[]) => {
+  selectedRooms.value = selection
+}
+
+const handleBatchDelete = async () => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedRooms.value.length} 个客房吗？`,
+      '批量删除确认',
+      { type: 'warning' }
+    )
+    const ids = selectedRooms.value.map(r => r.id)
+    await batchDeleteRooms(ids)
+    ElMessage.success('批量删除成功')
+    selectedRooms.value = []
+    await fetchRooms()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('批量删除失败')
+    }
+  }
+}
+
 const getStatusType = (s: string) => ({ AVAILABLE: 'success', OCCUPIED: 'danger', CLEANING: 'warning', MAINTENANCE: 'info' }[s] || 'info')
 const getStatusLabel = (s: string) => ({ AVAILABLE: '空闲', OCCUPIED: '已入住', CLEANING: '清洁中', MAINTENANCE: '维护中' }[s] || s)
 const getTypeLabel = (t: string) => roomTypeCodeNames[t] || t
@@ -140,8 +164,16 @@ onMounted(() => { fetchRoomTypesConfig(); fetchRooms() })
               <el-option label="空闲" value="AVAILABLE" /><el-option label="已入住" value="OCCUPIED" /><el-option label="清洁中" value="CLEANING" /><el-option label="维护中" value="MAINTENANCE" />
             </el-select>
             <el-button @click="resetFilters">重置</el-button>
+            <el-button
+              type="danger"
+              :disabled="selectedRooms.length === 0"
+              @click="handleBatchDelete"
+            >
+              批量删除 ({{ selectedRooms.length }})
+            </el-button>
           </div>
-          <el-table :data="rooms" v-loading="loading">
+          <el-table :data="rooms" v-loading="loading" @selection-change="handleSelectionChange">
+            <el-table-column type="selection" width="55" />
             <el-table-column prop="number" label="房间号" width="100" />
             <el-table-column prop="type" label="房型" width="120">
               <template #default="{ row }">{{ getTypeLabel(row.type) }}</template>

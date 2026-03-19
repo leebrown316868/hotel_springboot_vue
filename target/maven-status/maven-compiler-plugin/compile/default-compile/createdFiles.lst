@@ -13,6 +13,7 @@ com\hotel\repository\GuestRepository.class
 com\hotel\entity\Notification.class
 com\hotel\exception\ProfileNotFoundException.class
 com\hotel\entity\RoomTypeEntity.class
+com\hotel\util\NotificationHelper.class
 com\hotel\dto\RoomTypeRequest.class
 com\hotel\dto\AuthRequest.class
 com\hotel\service\NotificationService.class
@@ -24,6 +25,7 @@ com\hotel\dto\BookingReviewResponse.class
 com\hotel\exception\GuestAlreadyExistsException.class
 com\hotel\config\SecurityConfig.class
 com\hotel\migration\DatabaseMigration.class
+com\hotel\service\impl\GuestServiceImpl.class
 com\hotel\dto\RoomStatusDistribution.class
 com\hotel\entity\Room.class
 com\hotel\repository\UserRepository.class
@@ -56,6 +58,7 @@ com\hotel\exception\RoomTypeInUseException.class
 com\hotel\dto\BookingResponse$BookingResponseBuilder.class
 com\hotel\HotelApplication.class
 com\hotel\exception\SettingsNotFoundException.class
+com\hotel\security\GuestDetailsImpl.class
 com\hotel\repository\SystemSettingsRepository.class
 com\hotel\config\JwtConfig.class
 com\hotel\controller\NotificationController.class
@@ -74,6 +77,7 @@ com\hotel\dto\ReviewResponse$ReviewResponseBuilder.class
 com\hotel\service\ProfileService.class
 com\hotel\exception\RoomNotFoundException.class
 com\hotel\entity\Guest$GuestBuilder.class
+com\hotel\security\CompositeUserDetailsService.class
 com\hotel\security\UserDetailsServiceImpl.class
 com\hotel\entity\GuestStatus.class
 com\hotel\mapper\ProfileMapper.class
@@ -95,6 +99,7 @@ com\hotel\dto\SettingsRequest.class
 com\hotel\config\DatabaseConfig.class
 com\hotel\exception\GuestNotFoundException.class
 com\hotel\entity\Booking.class
+com\hotel\security\GuestDetailsService.class
 com\hotel\controller\BookingController.class
 com\hotel\dto\BookingRequest$GuestInfo.class
 com\hotel\service\impl\BookingServiceImpl.class
@@ -106,6 +111,7 @@ com\hotel\dto\RoomTypeListResponse.class
 com\hotel\entity\NotificationType.class
 com\hotel\entity\RoomType.class
 com\hotel\controller\RoomController.class
+com\hotel\dto\BatchDeleteRequest.class
 com\hotel\controller\ReviewController.class
 com\hotel\service\ReviewService.class
 com\hotel\mapper\BookingMapper.class

@@ -23,14 +23,14 @@ public class Booking {
     @Column(name = "booking_number", unique = true, nullable = false, length = 20)
     private String bookingNumber;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "guest_id", nullable = false)
     private Guest guest;
 
     @Column(nullable = false, length = 100)
     private String guestName;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
 

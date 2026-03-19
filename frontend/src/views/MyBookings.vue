@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import Layout from '../components/Layout.vue'
+import SimpleHeader from '../components/SimpleHeader.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMyBookings, cancelBooking } from '@/api/booking'
+import { createReview } from '@/api/review'
 import type { BookingResponse } from '@/types/booking'
 
 const router = useRouter()
 const loading = ref(false)
 
+const reviewDialogVisible = ref(false)
+const submittingReview = ref(false)
+const currentReview = ref({
+  bookingId: 0,
+  rating: 5,
+  comment: ''
+})
 const myBookings = ref<BookingResponse[]>([])
 
 const getStatusType = (status: string) => {
@@ -93,7 +101,48 @@ const handleCancel = async (booking: BookingResponse) => {
   }
 }
 
+const openReviewDialog = (booking: BookingResponse) => {
+  currentReview.value = {
+    bookingId: booking.id,
+    rating: 5,
+    comment: ''
+  }
+  reviewDialogVisible.value = true
+}
+
+const submitReview = async () => {
+  if (!currentReview.value.comment.trim()) {
+    ElMessage.warning('请输入评价内容')
+    return
+  }
+
+  submittingReview.value = true
+  try {
+    const response = await createReview({
+      bookingId: currentReview.value.bookingId,
+      rating: currentReview.value.rating,
+      comment: currentReview.value.comment
+    })
+
+    if (response.data.code === 200 || response.status === 201) {
+      ElMessage.success('感谢您的评价！')
+      reviewDialogVisible.value = false
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '提交评价失败')
+  } finally {
+    submittingReview.value = false
+  }
+}
+
 const goToNewBooking = () => {
+  // 检查登录状态
+  const token = localStorage.getItem('token')
+  if (!token) {
+    ElMessage.warning('请先登录')
+    return
+  }
+
   router.push('/bookings/new')
 }
 
@@ -103,8 +152,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <Layout>
-    <div class="max-w-4xl mx-auto">
+  <div class="min-h-screen bg-slate-50">
+    <SimpleHeader />
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <header class="mb-8 flex justify-between items-end">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">我的订单管理</h1>
@@ -163,11 +213,35 @@ onMounted(() => {
 
             <div class="mt-auto flex justify-end gap-3">
               <el-button v-if="canCancel(booking.status)" plain type="danger" @click="handleCancel(booking)">取消预订</el-button>
-              <el-button type="primary" plain>查看详情</el-button>
+              <el-button v-if="booking.status === 'CHECKED_OUT'" type="primary" plain @click="openReviewDialog(booking)">撰写评价</el-button>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </Layout>
+
+    <el-dialog v-model="reviewDialogVisible" title="撰写评价" width="500px">
+      <div class="space-y-6">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">总体评分</label>
+          <el-rate v-model="currentReview.rating" :colors="['#99A9BF', '#F7BA2A', '#FF9900']" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">您的评价内容</label>
+          <el-input
+            v-model="currentReview.comment"
+            type="textarea"
+            :rows="4"
+            placeholder="分享您的入住体验..."
+          />
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="reviewDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="submittingReview" @click="submitReview">提交评价</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>

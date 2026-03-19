@@ -141,6 +141,44 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<BookingTrendData> getBookingTrendsByRange(LocalDate startDate, LocalDate endDate) {
+        log.debug("获取预订趋势: {} 到 {}", startDate, endDate);
+
+        List<BookingTrendData> trends = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
+
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+
+        List<Object[]> results = bookingRepository.countBookingsByDate(startDateTime, endDateTime);
+
+        java.util.Map<String, Long> countMap = new java.util.HashMap<>();
+        for (Object[] result : results) {
+            if (result[0] != null) {
+                String date = result[0].toString();
+                Long count = result[1] != null ? ((Number) result[1]).longValue() : 0L;
+                countMap.put(date, count);
+            }
+        }
+
+        long days = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        for (int i = 0; i < days; i++) {
+            LocalDate date = startDate.plusDays(i);
+            String dateKey = date.toString();
+            String displayDate = date.format(formatter);
+
+            long count = countMap.getOrDefault(dateKey, 0L);
+            trends.add(BookingTrendData.builder()
+                    .date(displayDate)
+                    .count(count)
+                    .build());
+        }
+
+        return trends;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<RecentBookingSummary> getRecentBookings(int limit) {
         log.debug("获取最近{}条预订", limit);
 

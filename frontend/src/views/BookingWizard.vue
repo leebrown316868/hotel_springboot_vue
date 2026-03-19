@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { searchAvailableRooms, createBooking, processPayment } from '@/api/booking'
 import { settingsApi } from '@/api/settings'
+import { getUser } from '@/utils/auth'
+import SimpleHeader from '../components/SimpleHeader.vue'
 import type { RoomResponse, BookingResponse } from '@/types/booking'
 import type { RoomTypeConfig } from '@/types/settings'
 
@@ -15,10 +17,11 @@ const currentBooking = ref<BookingResponse | null>(null)
 const loading = ref(false)
 const paymentLoading = ref(false)
 const roomTypesConfig = ref<Record<string, RoomTypeConfig>>({})
+const hotelName = ref('GrandHorizon')
 
 const searchData = reactive({
   dateRange: [new Date(), new Date(Date.now() + (3 * 24 * 60 * 60 * 1000))],
-  guests: '2',
+  guests: '1',
   roomTypes: [] as string[]
 })
 
@@ -26,13 +29,15 @@ const guestForm = reactive({
   name: '',
   phone: '',
   email: '',
+  country: '',
   notes: ''
 })
 
 const guestRules = {
   name: [{ required: true, message: '请输入客人姓名', trigger: 'blur' }],
   phone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
-  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }]
+  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
+  country: [{ required: true, message: '请输入国家', trigger: 'blur' }]
 }
 
 const paymentForm = reactive({
@@ -208,6 +213,7 @@ const handlePayment = async () => {
         name: guestForm.name,
         phone: guestForm.phone,
         email: guestForm.email,
+        country: guestForm.country,
         notes: guestForm.notes
       }
     })
@@ -248,33 +254,34 @@ const bookAgain = () => {
   handleSearch()
 }
 
-// 组件挂载时自动搜索
+// 组件挂载时自动搜索并自动填入登录用户信息
 onMounted(async () => {
   await fetchRoomTypesConfig()
+
+  // 获取酒店名称
+  try {
+    const settings = await settingsApi.getPublicSettings()
+    hotelName.value = settings.hotelName || 'GrandHorizon'
+  } catch (error) {
+    console.error('获取酒店设置失败:', error)
+  }
+
+  // 自动填入登录用户的信息
+  const currentUser = getUser()
+  if (currentUser) {
+    guestForm.name = currentUser.name || ''
+    guestForm.email = currentUser.email || ''
+    guestForm.phone = currentUser.phone || ''
+    guestForm.country = currentUser.country || ''
+  }
+
   handleSearch()
 })
 </script>
 
 <template>
   <div class="pb-20 bg-gray-50 min-h-screen font-sans text-gray-900">
-    <header class="bg-white border-b sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <div class="flex items-center gap-2">
-            <div class="bg-blue-600 p-2 rounded-lg text-white">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-              </svg>
-            </div>
-            <span class="text-xl font-bold text-gray-800 tracking-tight">GrandHorizon <span class="text-blue-600 text-sm font-medium">酒店管理系统</span></span>
-          </div>
-          <div class="flex items-center gap-4">
-            <button class="text-gray-500 hover:text-gray-700 font-medium text-sm">需要帮助？</button>
-            <div class="h-8 w-8 rounded-full bg-gray-200"></div>
-          </div>
-        </div>
-      </div>
-    </header>
+    <SimpleHeader />
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
       <section class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
@@ -431,6 +438,9 @@ onMounted(async () => {
             </el-form-item>
             <el-form-item label="邮箱">
               <el-input v-model="guestForm.email" placeholder="请输入邮箱" />
+            </el-form-item>
+            <el-form-item label="国家">
+              <el-input v-model="guestForm.country" placeholder="请输入国家" />
             </el-form-item>
             <el-form-item label="特殊要求">
               <el-input v-model="guestForm.notes" type="textarea" :rows="3" placeholder="如有特殊要求请在此填写（可选）" />

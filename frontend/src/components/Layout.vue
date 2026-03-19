@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { logout, getUser } from '../utils/auth'
+import { settingsApi } from '../api/settings'
 import NotificationDropdown from './NotificationDropdown.vue'
 import type { User } from '../types/auth'
 
@@ -10,11 +11,34 @@ const route = useRoute()
 const router = useRouter()
 
 const currentUser = ref<User | null>(null)
+const hotelName = ref('GrandHotel')
 
-// 获取当前用户信息
-onMounted(() => {
+// 获取当前用户信息和酒店设置
+onMounted(async () => {
   currentUser.value = getUser()
+  try {
+    const settings = await settingsApi.getPublicSettings()
+    hotelName.value = settings.hotelName || 'GrandHotel'
+  } catch (error) {
+    console.error('获取酒店设置失败:', error)
+  }
 })
+
+// 根据用户角色获取首页路径
+const getHomePath = (): string => {
+  const role = currentUser.value?.role
+  if (role === 'ADMIN') return '/dashboard'
+  if (role === 'STAFF') return '/staff-bookings'
+  return '/bookings/new'
+}
+
+// 处理logo点击，跳转到首页
+const handleLogoClick = () => {
+  const homePath = getHomePath()
+  if (route.path !== homePath) {
+    router.push(homePath)
+  }
+}
 
 // 处理登出
 const handleLogout = async () => {
@@ -73,8 +97,8 @@ const allMenuItems = [
     icon: 'Avatar',
     roles: ['ADMIN', 'STAFF'],
     children: [
-      { path: '/rooms', label: '客房管理', icon: 'House' },
       { path: '/staff-bookings', label: '订单管理', icon: 'List' },
+      { path: '/rooms', label: '客房管理', icon: 'House' },
       { path: '/guests', label: '客户管理', icon: 'User' },
     ]
   },
@@ -83,22 +107,29 @@ const allMenuItems = [
     icon: 'Setting',
     roles: ['ADMIN'],
     children: [
-      { path: '/settings', label: '系统管理', icon: 'Tools' },
-      { path: '/rooms-resource', label: '客房资源管理', icon: 'OfficeBuilding' },
       { path: '/dashboard', label: '订单与财务监管', icon: 'Money' },
       { path: '/analytics', label: '数据统计与分析', icon: 'DataLine' },
+      { path: '/settings', label: '系统管理', icon: 'Tools' },
+      { path: '/rooms-resource', label: '客房资源管理', icon: 'OfficeBuilding' },
     ]
   },
   {
-    label: '用户模块',
+    label: '客户模块',
     icon: 'UserFilled',
-    roles: ['ADMIN', 'CUSTOMER'],
+    roles: ['CUSTOMER'],
     children: [
-      { path: '/browse-rooms', label: '房间浏览与搜索', icon: 'Search' },
       { path: '/bookings/new', label: '在线预订与支付', icon: 'ShoppingCart' },
       { path: '/my-bookings', label: '订单管理', icon: 'Tickets' },
       { path: '/profile', label: '个人信息管理', icon: 'Postcard' },
       { path: '/history-feedback', label: '历史记录与评价反馈', icon: 'ChatLineRound' },
+    ]
+  },
+  {
+    label: '个人中心',
+    icon: 'User',
+    roles: ['ADMIN', 'STAFF'],
+    children: [
+      { path: '/profile', label: '个人信息管理', icon: 'Postcard' },
     ]
   }
 ]
@@ -116,11 +147,14 @@ const menuItems = computed(() => {
 <template>
   <div class="flex min-h-screen bg-slate-50">
     <aside class="w-64 bg-white border-r border-slate-200 flex flex-col fixed h-full z-30">
-      <div class="p-6 flex items-center gap-3">
+      <div
+        class="p-6 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors"
+        @click="handleLogoClick"
+      >
         <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white">
           <el-icon :size="24"><OfficeBuilding /></el-icon>
         </div>
-        <span class="font-bold text-xl tracking-tight">GrandHotel</span>
+        <span class="font-bold text-xl tracking-tight">{{ hotelName }}</span>
       </div>
       
       <el-menu
@@ -204,7 +238,7 @@ const menuItems = computed(() => {
       </div>
 
       <footer class="px-8 py-4 border-t border-slate-200 bg-white text-slate-500 text-xs flex justify-between mt-auto">
-        <p>© 2023 GrandHotel 管理系统。保留所有权利。</p>
+        <p>© 2023 {{ hotelName }} 管理系统。保留所有权利。</p>
         <div class="flex gap-4">
           <a href="#" class="hover:text-blue-600">隐私政策</a>
           <a href="#" class="hover:text-blue-600">服务条款</a>

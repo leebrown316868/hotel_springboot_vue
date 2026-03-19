@@ -105,8 +105,16 @@ public class BookingServiceImpl implements BookingService {
 
         // 处理客人信息
         Guest guest;
-        if (request.getGuestInfo() != null) {
-            // 如果提供了客人信息，先查找或创建客人记录
+        if (userId != null) {
+            // 如果有用户ID（登录用户），优先使用用户对应的Guest记录
+            guest = guestRepository.findById(userId)
+                    .orElseThrow(() -> new GuestNotFoundException("客户不存在: " + userId));
+            // 如果提供了guestInfo，更新guest信息（保留password和role）
+            if (request.getGuestInfo() != null) {
+                updateGuestInfo(guest, request.getGuestInfo());
+            }
+        } else if (request.getGuestInfo() != null) {
+            // 未登录用户，根据客人信息查找或创建
             guest = findOrCreateGuest(request.getGuestInfo());
         } else if (request.getGuestId() != null) {
             // 使用提供的客人ID
@@ -300,11 +308,16 @@ public class BookingServiceImpl implements BookingService {
                     excludeStatuses
             );
         } else {
+            List<com.hotel.entity.RoomType> enumRoomTypes = request.getRoomTypes().stream()
+                    .map(com.hotel.entity.RoomType::valueOf)
+                    .collect(java.util.stream.Collectors.toList());
+
+            // 使用 JPQL 查询，直接传递 LocalDate 和 excludeStatuses
             rooms = bookingRepository.findAvailableRoomsWithTypeFilter(
                     request.getCheckInDate(),
                     request.getCheckOutDate(),
                     request.getGuestCount(),
-                    request.getRoomTypes(),
+                    enumRoomTypes,
                     excludeStatuses
             );
         }
@@ -346,6 +359,23 @@ public class BookingServiceImpl implements BookingService {
     }
 
     /**
+     * 更新客人信息（保留password和role等关键字段）
+     */
+    private void updateGuestInfo(Guest guest, BookingRequest.GuestInfo guestInfo) {
+        if (guestInfo.getName() != null) {
+            guest.setName(guestInfo.getName());
+        }
+        if (guestInfo.getPhone() != null) {
+            guest.setPhone(guestInfo.getPhone());
+        }
+        if (guestInfo.getCountry() != null) {
+            guest.setCountry(guestInfo.getCountry());
+        }
+        guest.setUpdatedAt(LocalDateTime.now());
+        guestRepository.save(guest);
+    }
+
+    /**
      * 查找或创建客人记录
      * 如果邮箱已存在，更新客人信息；否则创建新客人
      */
@@ -362,6 +392,9 @@ public class BookingServiceImpl implements BookingService {
                 if (guestInfo.getPhone() != null) {
                     guest.setPhone(guestInfo.getPhone());
                 }
+                if (guestInfo.getCountry() != null) {
+                    guest.setCountry(guestInfo.getCountry());
+                }
                 guest.setUpdatedAt(LocalDateTime.now());
                 return guestRepository.save(guest);
             }
@@ -372,9 +405,10 @@ public class BookingServiceImpl implements BookingService {
                 .name(guestInfo.getName() != null ? guestInfo.getName() : "未知")
                 .email(guestInfo.getEmail() != null ? guestInfo.getEmail() : "unknown@temp.com")
                 .phone(guestInfo.getPhone() != null ? guestInfo.getPhone() : "0000000000")
-                .country("中国") // 默认国家
+                .country(guestInfo.getCountry() != null ? guestInfo.getCountry() : "中国")
                 .status(GuestStatus.ACTIVE)
                 .totalBookings(0)
+                .role(com.hotel.entity.UserRole.CUSTOMER)
                 .build();
         return guestRepository.save(newGuest);
     }

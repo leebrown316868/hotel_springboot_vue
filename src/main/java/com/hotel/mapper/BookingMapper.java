@@ -16,11 +16,21 @@ import java.util.stream.Collectors;
 public class BookingMapper {
 
     public BookingResponse toResponse(Booking booking) {
+        String roomNumber = null;
+        try {
+            if (booking.getRoom() != null) {
+                roomNumber = booking.getRoom().getNumber();
+            }
+        } catch (Exception e) {
+            // Room不存在或懒加载失败，显示未知
+            roomNumber = "未知房间";
+        }
+
         return BookingResponse.builder()
                 .id(booking.getId())
                 .bookingNumber(booking.getBookingNumber())
                 .guestName(booking.getGuestName())
-                .roomNumber(booking.getRoom() != null ? booking.getRoom().getNumber() : null)
+                .roomNumber(roomNumber)
                 .roomType(booking.getRoomType())
                 .checkInDate(booking.getCheckInDate())
                 .checkOutDate(booking.getCheckOutDate())

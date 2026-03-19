@@ -32,7 +32,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     /**
      * 根据客人ID和状态查询预订记录（按创建时间倒序）
      */
-    List<Booking> findByGuest_IdAndStatusOrderByCreatedAtDesc(Long guestId, BookingStatus status);
+    @Query("SELECT b FROM Booking b LEFT JOIN FETCH b.guest LEFT JOIN FETCH b.room WHERE b.guest.id = :guestId AND b.status = :status ORDER BY b.createdAt DESC")
+    List<Booking> findByGuest_IdAndStatusOrderByCreatedAtDesc(@Param("guestId") Long guestId, @Param("status") BookingStatus status);
 
     /**
      * 根据状态列表查询预订
@@ -70,15 +71,16 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     /**
      * 查询指定日期范围内可用的房间（无房型筛选）
      */
-    @Query("SELECT DISTINCT r FROM Room r WHERE " +
-           "r.status = 'AVAILABLE' AND " +
-           "r.id NOT IN (" +
+    @Query("SELECT DISTINCT r FROM Room r " +
+           "LEFT JOIN RoomTypeEntity rt ON rt.code = r.type " +
+           "WHERE r.status = 'AVAILABLE' " +
+           "AND r.id NOT IN (" +
            "  SELECT b.room.id FROM Booking b WHERE " +
            "  b.checkInDate < :checkOut AND " +
            "  b.checkOutDate > :checkIn AND " +
            "  b.status NOT IN :excludeStatuses" +
            ") " +
-           "AND (:guestCount IS NULL OR r.capacity >= :guestCount)")
+           "AND (:guestCount IS NULL OR COALESCE(rt.capacity, r.capacity, 2) >= :guestCount)")
     List<Room> findAvailableRoomsNoTypeFilter(
         @Param("checkIn") LocalDate checkIn,
         @Param("checkOut") LocalDate checkOut,
@@ -89,15 +91,16 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     /**
      * 查询指定日期范围内可用的房间（有房型筛选）
      */
-    @Query("SELECT DISTINCT r FROM Room r WHERE " +
-           "r.status = 'AVAILABLE' AND " +
-           "r.id NOT IN (" +
+    @Query("SELECT DISTINCT r FROM Room r " +
+           "LEFT JOIN RoomTypeEntity rt ON rt.code = r.type " +
+           "WHERE r.status = 'AVAILABLE' " +
+           "AND r.id NOT IN (" +
            "  SELECT b.room.id FROM Booking b WHERE " +
            "  b.checkInDate < :checkOut AND " +
            "  b.checkOutDate > :checkIn AND " +
            "  b.status NOT IN :excludeStatuses" +
            ") " +
-           "AND (:guestCount IS NULL OR r.capacity >= :guestCount) " +
+           "AND (:guestCount IS NULL OR COALESCE(rt.capacity, r.capacity, 2) >= :guestCount) " +
            "AND r.type IN :roomTypes")
     List<Room> findAvailableRoomsWithTypeFilter(
         @Param("checkIn") LocalDate checkIn,

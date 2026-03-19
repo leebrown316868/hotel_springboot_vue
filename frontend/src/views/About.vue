@@ -24,7 +24,7 @@ const fetchHotelInfo = async () => {
 }
 
 const goHome = () => {
-  router.push('/browse-rooms')
+  router.push('/bookings/new')
 }
 
 onMounted(() => {

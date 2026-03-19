@@ -110,6 +110,13 @@ const getRoomCategory = (type: string) => {
 const bookRoom = () => {
   if (!room.value) return
 
+  // 检查登录状态
+  const token = localStorage.getItem('token')
+  if (!token) {
+    ElMessage.warning('请先登录')
+    return
+  }
+
   // 检查房间状态
   if (room.value.status !== 'AVAILABLE') {
     ElMessage.warning('该房间当前不可预订')
@@ -123,7 +130,7 @@ const bookRoom = () => {
 
 // 返回上一页
 const goBack = () => {
-  router.push('/browse-rooms')
+  router.push('/bookings/new')
 }
 
 // 获取房间详情

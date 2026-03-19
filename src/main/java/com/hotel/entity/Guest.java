@@ -4,7 +4,6 @@ import lombok.*;
 import javax.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import com.hotel.entity.UserRole;
 
 @Data
 @Entity
@@ -46,7 +45,7 @@ public class Guest {
     private LocalDateTime createdAt;
 
     @Column
-    private String password; // nullable: 只有注册用户才有密码
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -65,6 +64,9 @@ public class Guest {
         }
         if (totalBookings == null) {
             totalBookings = 0;
+        }
+        if (role == null) {
+            role = UserRole.CUSTOMER;
         }
     }
 

@@ -41,6 +41,9 @@ export interface BookingSummary {
   status: string
   roomNumber: string
   totalPrice: number
+  reviewed?: boolean
+  rating?: number
+  comment?: string
 }
 
 export interface ApiResponse<T = any> {

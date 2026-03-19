@@ -7,6 +7,7 @@ import com.hotel.dto.RoomTypeStats;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 public interface RoomService {
 
@@ -25,4 +26,6 @@ public interface RoomService {
     RoomTypeStats getRoomTypeStats(String roomType);
 
     String uploadRoomImage(Long roomId, MultipartFile file) throws IOException;
+
+    void batchDeleteRooms(List<Long> ids);
 }

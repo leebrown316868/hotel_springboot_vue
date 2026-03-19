@@ -231,51 +231,8 @@ public class DataInitializer {
     }
 
     private void initializeGuests() {
-        try {
-            if (guestRepository.count() > 0) {
-                logger.info("Guest data already exists, skipping initialization");
-                return;
-            }
-        } catch (Exception e) {
-            logger.info("Guests table not found or error checking count, will attempt to create data: {}", e.getMessage());
-            // 表可能还不存在，继续尝试创建数据
-        }
-
-        logger.info("Initializing guest data...");
-
-        // 中国客户
-        createGuest("张三", "zhangsan@example.com", "13800138000", "中国", GuestStatus.VIP, 12, LocalDate.of(2023, 11, 1));
-        createGuest("李四", "lisi@example.com", "13900139000", "中国", GuestStatus.ACTIVE, 5, LocalDate.of(2023, 10, 24));
-        createGuest("王五", "wangwu@example.com", "13700137000", "中国", GuestStatus.ACTIVE, 2, LocalDate.of(2023, 10, 25));
-        createGuest("陈伟", "chen.wei@example.cn", "13500135000", "中国", GuestStatus.VIP, 15, LocalDate.of(2023, 11, 5));
-        createGuest("赵敏", "zhaomin@example.cn", "13600136000", "中国", GuestStatus.INACTIVE, 1, LocalDate.of(2023, 5, 10));
-
-        // 日本客户
-        createGuest("田中裕子", "y.tanaka@example.jp", "+81 3 1234 5678", "日本", GuestStatus.ACTIVE, 3, LocalDate.of(2023, 9, 15));
-        createGuest("山田太郎", "t.yamada@example.jp", "+81 90 1234 5678", "日本", GuestStatus.ACTIVE, 4, LocalDate.of(2023, 10, 20));
-
-        // 韩国客户
-        createGuest("金智秀", "j.kim@example.kr", "+82 10 1234 5678", "韩国", GuestStatus.ACTIVE, 2, LocalDate.of(2023, 10, 18));
-
-        // 德国客户
-        createGuest("汉斯·穆勒", "h.mueller@example.de", "+49 30 1234567", "德国", GuestStatus.ACTIVE, 4, LocalDate.of(2023, 8, 20));
-        createGuest("安娜·施密特", "a.schmidt@example.de", "+49 171 1234567", "德国", GuestStatus.INACTIVE, 1, LocalDate.of(2023, 6, 15));
-
-        // 法国客户
-        createGuest("苏菲·马丁", "s.martin@example.fr", "+33 1 23 45 67 89", "法国", GuestStatus.INACTIVE, 2, LocalDate.of(2023, 10, 10));
-        createGuest("皮埃尔·杜邦", "p.dupont@example.fr", "+33 6 12 34 56 78", "法国", GuestStatus.ACTIVE, 3, LocalDate.of(2023, 10, 28));
-
-        // 美国客户
-        createGuest("约翰·史密斯", "j.smith@example.com", "+1 212 555 1234", "美国", GuestStatus.VIP, 8, LocalDate.of(2023, 11, 2));
-        createGuest("艾米·约翰逊", "a.johnson@example.com", "+1 310 555 9876", "美国", GuestStatus.ACTIVE, 6, LocalDate.of(2023, 10, 30));
-
-        // 英国客户
-        createGuest("詹姆斯·威尔逊", "j.wilson@example.co.uk", "+44 20 7946 0958", "英国", GuestStatus.ACTIVE, 3, LocalDate.of(2023, 10, 22));
-
-        // 澳大利亚客户
-        createGuest("艾玛·布朗", "e.brown@example.com.au", "+61 2 9876 5432", "澳大利亚", GuestStatus.ACTIVE, 2, LocalDate.of(2023, 10, 25));
-
-        logger.info("Guest data initialized successfully: 15 guests created");
+        // 不再自动创建mock客户数据
+        logger.info("Skipping guest data initialization - mock data disabled");
     }
 
     private void createGuest(String name, String email, String phone, String country,

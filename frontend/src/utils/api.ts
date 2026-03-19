@@ -50,15 +50,8 @@ api.interceptors.response.use(
 
       switch (status) {
         case 401:
-          // Unauthorized - 只在非登录页面时重定向
-          const isLoginPage = window.location.pathname === '/login'
-          if (!isLoginPage) {
-            localStorage.removeItem('token')
-            localStorage.removeItem('user')
-            ElMessage.error('未授权，请重新登录')
-            window.location.href = '/login'
-          }
-          // 登录页面的401错误由组件自己处理，不在这里拦截
+          // Unauthorized - 只显示错误消息，不跳转
+          ElMessage.error('未授权，请重新登录')
           break
         case 403:
           ElMessage.error('没有权限访问')

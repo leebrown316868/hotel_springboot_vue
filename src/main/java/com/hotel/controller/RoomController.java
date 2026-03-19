@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -61,6 +62,13 @@ public class RoomController {
     public ResponseEntity<ApiResponse<String>> deleteRoom(@PathVariable Long id) {
         roomService.deleteRoom(id);
         return ResponseEntity.ok(ApiResponse.success("房间删除成功"));
+    }
+
+    @DeleteMapping("/batch")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> batchDeleteRooms(@RequestBody List<Long> ids) {
+        roomService.batchDeleteRooms(ids);
+        return ResponseEntity.ok(ApiResponse.success("批量删除成功"));
     }
 
     @PatchMapping("/{id}/status")

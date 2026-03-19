@@ -36,17 +36,13 @@ public class ReviewService {
     private final GuestRepository guestRepository;
 
     public List<BookingReviewResponse> getUserCompletedBookings(String email) {
-        // 通过email查找User
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ProfileNotFoundException("用户不存在"));
-
-        // 通过email查找对应的Guest（假设User和Guest使用相同的email）
+        // 直接通过email查找Guest（注册用户都在Guest表中）
         Guest guest = guestRepository.findByEmail(email)
                 .orElse(null);
 
         if (guest == null) {
             // 如果没有对应的Guest记录，返回空列表
-            log.info("No guest found for user email: {}", email);
+            log.info("No guest found for email: {}", email);
             return List.of();
         }
 
@@ -61,39 +57,55 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponse createReview(String email, ReviewRequest request) {
-        // 通过email查找User
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ProfileNotFoundException("用户不存在"));
+        log.info("=== Creating Review ===");
+        log.info("Email: {}", email);
+        log.info("Booking ID: {}", request.getBookingId());
+        log.info("Rating: {}", request.getRating());
+        log.info("Comment length: {}", request.getComment() != null ? request.getComment().length() : 0);
+
+        // 直接通过email查找Guest
+        Guest guest = guestRepository.findByEmail(email)
+                .orElseThrow(() -> {
+                    log.error("Guest not found for email: {}", email);
+                    return new ProfileNotFoundException("用户不存在");
+                });
+
+        log.info("Guest found: id={}, email={}, name={}", guest.getId(), guest.getEmail(), guest.getName());
 
         Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new BookingNotFoundException("预订不存在"));
+                .orElseThrow(() -> {
+                    log.error("Booking not found for id: {}", request.getBookingId());
+                    return new BookingNotFoundException("预订不存在");
+                });
+
+        log.info("Booking found: id={}, guest_id={}, status={}", booking.getId(), booking.getGuest().getId(), booking.getStatus());
 
         // 验证订单状态：只有已完成的订单才能评价
         if (booking.getStatus() != BookingStatus.CHECKED_OUT) {
+            log.error("Booking status is not CHECKED_OUT: {}", booking.getStatus());
             throw new InvalidBookingStatusException("只能对已完成的订单进行评价");
         }
 
         // 验证订单所有权：只能评价自己的订单
-        // 通过User email查找对应的Guest
-        Guest guest = guestRepository.findByEmail(email)
-                .orElseThrow(() -> new ProfileNotFoundException("无法找到对应的客户信息"));
-
         if (!booking.getGuest().getId().equals(guest.getId())) {
+            log.error("Guest ID mismatch: booking.guest_id={}, user.guest_id={}", booking.getGuest().getId(), guest.getId());
             throw new InvalidBookingStatusException("无权评价此订单");
         }
 
         // 检查是否已评价
         if (reviewRepository.existsByBookingId(request.getBookingId())) {
+            log.error("Review already exists for booking: {}", request.getBookingId());
             throw new ReviewAlreadyExistsException("该订单已评价");
         }
 
         Review review = new Review();
         review.setBooking(booking);
-        review.setUser(user);
+        review.setGuest(guest);  // 设置 guest 而不是 user
         review.setRating(request.getRating());
         review.setComment(request.getComment());
 
         review = reviewRepository.save(review);
+        log.info("Review created successfully: id={}", review.getId());
         return mapToReviewResponse(review);
     }
 
@@ -103,9 +115,9 @@ public class ReviewService {
         return BookingReviewResponse.builder()
                 .id(booking.getId())
                 .bookingNumber(booking.getBookingNumber())
-                .roomType(booking.getRoomType().name())
-                .checkInDate(booking.getCheckInDate().toString())
-                .checkOutDate(booking.getCheckOutDate().toString())
+                .roomType(booking.getRoomType() != null ? booking.getRoomType().name() : "UNKNOWN")
+                .checkInDate(booking.getCheckInDate() != null ? booking.getCheckInDate().toString() : "")
+                .checkOutDate(booking.getCheckOutDate() != null ? booking.getCheckOutDate().toString() : "")
                 .reviewed(reviewOpt.isPresent())
                 .rating(reviewOpt.map(Review::getRating).orElse(null))
                 .comment(reviewOpt.map(Review::getComment).orElse(null))
@@ -115,12 +127,12 @@ public class ReviewService {
     private ReviewResponse mapToReviewResponse(Review review) {
         return ReviewResponse.builder()
                 .id(review.getId())
-                .bookingId(review.getBooking().getId())
-                .bookingNumber(review.getBooking().getBookingNumber())
-                .roomType(review.getBooking().getRoomType().name())
+                .bookingId(review.getBooking() != null ? review.getBooking().getId() : null)
+                .bookingNumber(review.getBooking() != null ? review.getBooking().getBookingNumber() : null)
+                .roomType(review.getBooking() != null && review.getBooking().getRoomType() != null ? review.getBooking().getRoomType().name() : "UNKNOWN")
                 .rating(review.getRating())
                 .comment(review.getComment())
-                .createdAt(review.getCreatedAt().toString())
+                .createdAt(review.getCreatedAt() != null ? review.getCreatedAt().toString() : null)
                 .build();
     }
 }

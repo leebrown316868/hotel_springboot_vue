@@ -11,6 +11,5 @@ export const updateProfile = (data: UpdateProfileRequest) => {
 }
 
 export const changePassword = async (request: ChangePasswordRequest): Promise<void> => {
-  const response = await api.put<ApiResponse<void>>('/api/profile/password', request)
-  return response.data
+  await api.put<ApiResponse<void>>('/api/profile/password', request)
 }

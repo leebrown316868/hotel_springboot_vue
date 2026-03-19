@@ -12,6 +12,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 
 /**
  * 统计数据控制器
@@ -59,6 +61,19 @@ public class StatisticsController {
             @RequestParam(defaultValue = "7") int days) {
         log.info("获取预订趋势数据，天数：{}", days);
         List<BookingTrendData> trends = statisticsService.getBookingTrends(days);
+        return ApiResponse.success(trends);
+    }
+
+    /**
+     * 获取指定日期范围的预订趋势数据
+     */
+    @GetMapping("/booking-trends-range")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<List<BookingTrendData>> getBookingTrendsByRange(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        log.info("获取预订趋势数据，范围：{} 到 {}", startDate, endDate);
+        List<BookingTrendData> trends = statisticsService.getBookingTrendsByRange(startDate, endDate);
         return ApiResponse.success(trends);
     }
 

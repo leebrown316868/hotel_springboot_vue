@@ -2,7 +2,7 @@ package com.hotel.controller;
 
 import com.hotel.dto.*;
 import com.hotel.entity.User;
-import com.hotel.security.UserDetailsImpl;
+import com.hotel.security.GuestDetailsImpl;
 import com.hotel.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -38,11 +38,11 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(@AuthenticationPrincipal UserDetailsImpl userDetails) {
-        if (userDetails == null) {
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(@AuthenticationPrincipal GuestDetailsImpl guestDetails) {
+        if (guestDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        UserResponse response = authService.getCurrentUser(userDetails.getEmail());
+        UserResponse response = authService.getCurrentUser(guestDetails.getGuest().getEmail());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

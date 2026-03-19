@@ -4,11 +4,13 @@ import com.hotel.dto.BookingSummary;
 import com.hotel.dto.GuestListResponse;
 import com.hotel.dto.GuestRequest;
 import com.hotel.dto.GuestResponse;
+import com.hotel.entity.Booking;
 import com.hotel.entity.Guest;
 import com.hotel.entity.GuestStatus;
 import com.hotel.exception.GuestAlreadyExistsException;
 import com.hotel.exception.GuestNotFoundException;
 import com.hotel.mapper.GuestMapper;
+import com.hotel.repository.BookingRepository;
 import com.hotel.repository.GuestRepository;
 import com.hotel.service.GuestService;
 import com.hotel.specification.GuestSpecification;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,6 +34,8 @@ public class GuestServiceImpl implements GuestService {
 
     private final GuestRepository guestRepository;
     private final GuestMapper guestMapper;
+    private final BookingRepository bookingRepository;
+    private final com.hotel.repository.ReviewRepository reviewRepository;
 
     @Override
     public GuestListResponse getGuests(int page, int size, String searchQuery) {
@@ -120,12 +125,34 @@ public class GuestServiceImpl implements GuestService {
             throw new GuestNotFoundException("客户不存在: " + id);
         }
 
-        // TODO: 在Phase 4实现Booking后，需要：
-        // 1. 注入BookingRepository
-        // 2. 使用 bookingRepository.findByGuestIdOrderByCreatedAtDesc(id)
-        // 3. 使用 guestMapper.toBookingSummary() 转换每个Booking
+        // 查询客户的所有预订记录（不分页，使用较大的页面大小）
+        Pageable pageable = PageRequest.of(0, 1000, Sort.by("createdAt").descending());
+        Page<Booking> bookingPage = bookingRepository.findByGuest_IdOrderByCreatedAtDesc(id, pageable);
 
-        log.warn("getGuestBookings is not yet implemented - Booking entity will be created in Phase 4");
-        return Collections.emptyList();
+        // 转换为 BookingSummary DTO
+        return bookingPage.getContent().stream()
+                .map(this::toBookingSummary)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 将 Booking 实体转换为 BookingSummary DTO
+     */
+    private BookingSummary toBookingSummary(Booking booking) {
+        // 查询评价信息
+        var reviewOpt = reviewRepository.findByBookingId(booking.getId());
+
+        return BookingSummary.builder()
+                .id(booking.getId())
+                .roomNumber(booking.getRoom() != null ? booking.getRoom().getNumber() : "未分配")
+                .checkInDate(booking.getCheckInDate())
+                .checkOutDate(booking.getCheckOutDate())
+                .status(booking.getStatus() != null ? booking.getStatus().name() : "UNKNOWN")
+                .totalPrice(booking.getTotalAmount())
+                .createdAt(booking.getCreatedAt())
+                .reviewed(reviewOpt.isPresent())
+                .rating(reviewOpt.isPresent() ? reviewOpt.get().getRating() : null)
+                .comment(reviewOpt.isPresent() ? reviewOpt.get().getComment() : null)
+                .build();
     }
 }

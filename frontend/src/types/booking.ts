@@ -26,6 +26,7 @@ export interface BookingRequest {
     name: string
     phone: string
     email: string
+    country: string
     notes?: string
   }
 }

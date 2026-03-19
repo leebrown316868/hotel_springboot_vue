@@ -42,11 +42,14 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
 
+        // 将所有错误消息合并成一个字符串
+        String combinedMessage = errors.values().stream().findFirst().orElse("参数验证失败");
+
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.<Map<String, String>>builder()
                         .code(HttpStatus.BAD_REQUEST.value())
-                        .message("Validation failed")
+                        .message(combinedMessage)
                         .data(errors)
                         .build());
     }

@@ -9,6 +9,7 @@ import com.hotel.service.ProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -22,24 +23,36 @@ public class ProfileController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<ProfileResponse>> getProfile(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        ProfileResponse response = profileService.getProfile(userDetails.getEmail());
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = getEmailFromUserDetails(userDetails);
+        ProfileResponse response = profileService.getProfile(email);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping
     public ResponseEntity<ApiResponse<ProfileResponse>> updateProfile(
             @Valid @RequestBody UpdateProfileRequest request,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        ProfileResponse response = profileService.updateProfile(userDetails.getEmail(), request);
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = getEmailFromUserDetails(userDetails);
+        ProfileResponse response = profileService.updateProfile(email, request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        profileService.changePassword(userDetails.getEmail(), request);
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = getEmailFromUserDetails(userDetails);
+        profileService.changePassword(email, request);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    private String getEmailFromUserDetails(UserDetails userDetails) {
+        if (userDetails instanceof UserDetailsImpl) {
+            return ((UserDetailsImpl) userDetails).getEmail();
+        } else if (userDetails instanceof com.hotel.security.GuestDetailsImpl) {
+            return ((com.hotel.security.GuestDetailsImpl) userDetails).getGuest().getEmail();
+        }
+        return userDetails.getUsername();
     }
 }

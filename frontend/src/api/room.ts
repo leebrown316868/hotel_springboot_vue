@@ -64,3 +64,12 @@ export const uploadRoomImage = async (
   })
   return response.data
 }
+
+export const batchDeleteRooms = async (
+  ids: number[]
+): Promise<ApiResponse<string>> => {
+  const response = await api.delete<ApiResponse<string>>('/api/rooms/batch', {
+    data: ids
+  })
+  return response.data
+}
