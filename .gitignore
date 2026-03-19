@@ -1,14 +1,33 @@
 # GSD Planning
 .planning/
-.uploads/
+
 # IDE
 .idea/
 .vscode/
 *.iml
+*.swp
+*.DS_Store
 
 # OS
-.DS_Store
 Thumbs.db
+.DS_Store
 
 # Logs
 *.log
+
+# Maven (Java)
+target/
+*.class
+
+# Frontend (Node/Vue)
+node_modules/
+dist/
+.env.local
+.env.*.local
+
+# Data
+data/*.db
+data/*.db-journal
+
+# Uploads
+uploads/
