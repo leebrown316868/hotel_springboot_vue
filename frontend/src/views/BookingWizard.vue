@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { searchAvailableRooms, createBooking, processPayment } from '@/api/booking'
+import { searchAvailableRooms, createBooking, processPayment, getBookingByNumber } from '@/api/booking'
 import { settingsApi } from '@/api/settings'
 import { getUser } from '@/utils/auth'
 import SimpleHeader from '../components/SimpleHeader.vue'
+import QRCode from 'qrcode'
 import type { RoomResponse, BookingResponse } from '@/types/booking'
 import type { RoomTypeConfig } from '@/types/settings'
 
@@ -18,6 +19,13 @@ const loading = ref(false)
 const paymentLoading = ref(false)
 const roomTypesConfig = ref<Record<string, RoomTypeConfig>>({})
 const hotelName = ref('GrandHorizon')
+
+// 支付对话框
+const paymentDialogVisible = ref(false)
+const paymentQrCodeUrl = ref('')
+const paymentBookingNumber = ref('')
+const paymentPollingTimer = ref<number | null>(null)
+const paymentCountdown = ref(900) // 15分钟
 
 const searchData = reactive({
   dateRange: [new Date(), new Date(Date.now() + (3 * 24 * 60 * 60 * 1000))],
@@ -171,6 +179,16 @@ const selectRoom = (room: RoomResponse) => {
   selectedRoom.value = room
 }
 
+// 继续预订（底部栏按钮）
+const handleContinueBooking = () => {
+  if (!getUser()) {
+    ElMessage.warning('请先登录后再预订')
+    router.push('/login')
+    return
+  }
+  activeStep.value = 3
+}
+
 // 下一步
 const nextStep = () => {
   if (activeStep.value < 5) {
@@ -194,7 +212,6 @@ const handlePayment = async () => {
 
   paymentLoading.value = true
   try {
-    // 先创建预订
     const userStr = localStorage.getItem('user')
     const user = userStr ? JSON.parse(userStr) : null
 
@@ -204,6 +221,7 @@ const handlePayment = async () => {
       return
     }
 
+    // 创建预订
     const bookingResponse = await createBooking({
       roomId: selectedRoom.value.id,
       checkInDate: formatSearchDate(searchData.dateRange[0]),
@@ -221,15 +239,19 @@ const handlePayment = async () => {
     if (bookingResponse.data.code === 200 && bookingResponse.data.data) {
       const booking = bookingResponse.data.data
 
-      // 执行支付
+      // 调用支付宝预付接口，获取二维码
       const paymentResponse = await processPayment(booking.id, paymentForm.method)
 
-      if (paymentResponse.data.code === 200) {
-        currentBooking.value = paymentResponse.data.data
-        activeStep.value = 5
-        ElMessage.success('预订成功！')
+      if (paymentResponse.data.code === 200 && paymentResponse.data.data) {
+        paymentBookingNumber.value = booking.bookingNumber
+        const qrContent = paymentResponse.data.data.qrCode || ''
+        // 本地生成二维码图片
+        paymentQrCodeUrl.value = await QRCode.toDataURL(qrContent, { width: 200, margin: 1 })
+        paymentCountdown.value = 900
+        paymentDialogVisible.value = true
+        startPaymentPolling(booking.bookingNumber)
       } else {
-        ElMessage.error('支付失败，请重试')
+        ElMessage.error(paymentResponse.data.message || '创建支付订单失败')
       }
     } else {
       ElMessage.error('创建预订失败')
@@ -239,6 +261,63 @@ const handlePayment = async () => {
   } finally {
     paymentLoading.value = false
   }
+}
+
+// 轮询支付状态
+const startPaymentPolling = (bookingNumber: string) => {
+  stopPaymentPolling()
+  paymentPollingTimer.value = window.setInterval(async () => {
+    try {
+      const res = await getBookingByNumber(bookingNumber)
+      if (res.data.data && res.data.data.paymentStatus === 'PAID') {
+        stopPaymentPolling()
+        paymentDialogVisible.value = false
+        currentBooking.value = res.data.data
+        activeStep.value = 5
+        ElMessage.success('支付成功！')
+      }
+    } catch {
+      // 轮询失败静默处理
+    }
+  }, 3000)
+
+  // 倒计时
+  const countdownTimer = window.setInterval(() => {
+    paymentCountdown.value--
+    if (paymentCountdown.value <= 0) {
+      window.clearInterval(countdownTimer)
+      stopPaymentPolling()
+      paymentDialogVisible.value = false
+      ElMessage.warning('支付超时，请重新下单')
+    }
+  }, 1000)
+
+  // 存储倒计时timer以便清理
+  ;(window as any).__paymentCountdownTimer = countdownTimer
+}
+
+const stopPaymentPolling = () => {
+  if (paymentPollingTimer.value) {
+    window.clearInterval(paymentPollingTimer.value)
+    paymentPollingTimer.value = null
+  }
+  const cdt = (window as any).__paymentCountdownTimer
+  if (cdt) {
+    window.clearInterval(cdt)
+    delete (window as any).__paymentCountdownTimer
+  }
+}
+
+const closePaymentDialog = () => {
+  stopPaymentPolling()
+  paymentDialogVisible.value = false
+}
+
+// 格式化倒计时
+const formatCountdown = (seconds: number) => {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
 // 跳转到我的订单
@@ -276,6 +355,10 @@ onMounted(async () => {
   }
 
   handleSearch()
+})
+
+onUnmounted(() => {
+  stopPaymentPolling()
 })
 </script>
 
@@ -582,12 +665,46 @@ onMounted(async () => {
             <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">预估总价</span>
             <p class="text-xl font-bold text-blue-600">¥{{ totalAmount }} <span class="text-sm font-normal text-gray-500">/ {{ calculateDays() }} 晚</span></p>
           </div>
-          <button @click="nextStep" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition-colors">
+          <button @click="handleContinueBooking" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition-colors">
             继续预订
           </button>
         </div>
       </div>
     </div>
+
+    <!-- 支付对话框 -->
+    <el-dialog v-model="paymentDialogVisible" width="420px" :close-on-click-modal="false" :close-on-press-escape="false" @close="closePaymentDialog">
+      <div class="text-center">
+        <h3 class="text-lg font-bold text-gray-900 mb-2">支付宝扫码支付</h3>
+        <p class="text-sm text-gray-500 mb-4">请使用支付宝扫描下方二维码完成支付</p>
+
+        <div class="bg-white border-2 border-gray-200 rounded-xl p-4 inline-block mb-4">
+          <div v-if="paymentQrCodeUrl" class="w-52 h-52 flex items-center justify-center">
+            <img :src="paymentQrCodeUrl" alt="支付二维码" class="w-full h-full" />
+          </div>
+          <div v-else class="w-52 h-52 flex items-center justify-center text-gray-400">
+            <svg class="w-16 h-16 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-3 mb-4">
+          <p class="text-sm text-gray-600">支付金额</p>
+          <p class="text-2xl font-black text-blue-600">&yen;{{ totalAmount }}</p>
+        </div>
+
+        <div class="flex items-center justify-center gap-2 text-gray-400 text-sm mb-4">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>剩余时间 <strong class="text-gray-600">{{ formatCountdown(paymentCountdown) }}</strong></span>
+        </div>
+
+        <p class="text-xs text-gray-400">支付完成后请等待自动跳转，或手动刷新订单状态</p>
+      </div>
+    </el-dialog>
   </div>
 </template>
 

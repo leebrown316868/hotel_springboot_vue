@@ -30,4 +30,5 @@ public class BookingResponse {
     private BigDecimal totalAmount;
     private PaymentStatus paymentStatus;
     private LocalDateTime createdAt;
+    private String qrCode;
 }

@@ -1,5 +1,6 @@
 package com.hotel.service.impl;
 
+import com.hotel.config.AlipayConfig;
 import com.hotel.dto.BookingListResponse;
 import com.hotel.dto.BookingRequest;
 import com.hotel.dto.BookingResponse;
@@ -25,6 +26,11 @@ import com.hotel.repository.GuestRepository;
 import com.hotel.repository.RoomRepository;
 import com.hotel.service.BookingService;
 import com.hotel.util.NotificationHelper;
+import com.alipay.api.AlipayApiException;
+import com.alipay.api.AlipayClient;
+import com.alipay.api.DefaultAlipayClient;
+import com.alipay.api.request.AlipayTradePrecreateRequest;
+import com.alipay.api.response.AlipayTradePrecreateResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -39,8 +45,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Map;
+import java.util.HashMap;
 
 @Slf4j
 @Service
@@ -53,6 +59,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingMapper bookingMapper;
     private final RoomMapper roomMapper;
     private final NotificationHelper notificationHelper;
+    private final AlipayConfig alipayConfig;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -200,6 +207,7 @@ public class BookingServiceImpl implements BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         if (booking.getPaymentStatus() == PaymentStatus.PAID) {
+            alipayRefund(booking.getBookingNumber(), booking.getTotalAmount());
             booking.setPaymentStatus(PaymentStatus.REFUNDED);
         }
 
@@ -265,25 +273,127 @@ public class BookingServiceImpl implements BookingService {
             throw new InvalidBookingStatusException("只有待确认的订单可以支付");
         }
 
-        // 模拟支付处理延迟
         try {
-            Thread.sleep(ThreadLocalRandom.current().nextLong(1000, 2000));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            AlipayClient alipayClient = new DefaultAlipayClient(
+                    alipayConfig.getGateway(),
+                    alipayConfig.getAppId(),
+                    alipayConfig.getPrivateKey(),
+                    "json",
+                    "UTF-8",
+                    alipayConfig.getAlipayPublicKey(),
+                    "RSA2"
+            );
+
+            AlipayTradePrecreateRequest request = new AlipayTradePrecreateRequest();
+            request.setNotifyUrl(alipayConfig.getNotifyUrl());
+
+            request.setBizContent("{" +
+                    "\"out_trade_no\":\"" + booking.getBookingNumber() + "\"," +
+                    "\"total_amount\":\"" + booking.getTotalAmount().toPlainString() + "\"," +
+                    "\"subject\":\"酒店预订-" + booking.getRoom().getNumber() + "\"," +
+                    "\"timeout_express\":\"15m\"" +
+                    "}");
+
+            AlipayTradePrecreateResponse response = alipayClient.execute(request);
+
+            if (response.isSuccess()) {
+                log.info("支付宝预付订单创建成功, bookingNumber={}, qrCode={}", booking.getBookingNumber(), response.getQrCode());
+                // 支付宝返回二维码，等回调更新状态
+                // 这里不直接改状态，等异步回调处理
+                return BookingResponse.builder()
+                        .id(booking.getId())
+                        .bookingNumber(booking.getBookingNumber())
+                        .guestName(booking.getGuestName())
+                        .roomNumber(booking.getRoom() != null ? booking.getRoom().getNumber() : "")
+                        .roomType(booking.getRoomType())
+                        .checkInDate(booking.getCheckInDate())
+                        .checkOutDate(booking.getCheckOutDate())
+                        .guestCount(booking.getGuestCount())
+                        .status(booking.getStatus())
+                        .totalAmount(booking.getTotalAmount())
+                        .paymentStatus(booking.getPaymentStatus())
+                        .createdAt(booking.getCreatedAt())
+                        .qrCode(response.getQrCode())
+                        .build();
+            } else {
+                log.error("支付宝预付订单创建失败: code={}, msg={}, subCode={}, subMsg={}",
+                        response.getCode(), response.getMsg(), response.getSubCode(), response.getSubMsg());
+                throw new PaymentFailedException("创建支付订单失败: " + response.getSubMsg());
+            }
+        } catch (AlipayApiException e) {
+            log.error("支付宝API调用异常", e);
+            throw new PaymentFailedException("支付服务暂时不可用，请重试");
         }
+    }
 
-        // 模拟约5%的失败率
-        if (new Random().nextDouble() < 0.05) {
-            throw new PaymentFailedException("支付失败，请重试");
+    /**
+     * 处理支付宝异步回调通知
+     */
+    @Transactional
+    public boolean handleAlipayNotify(Map<String, String> params) {
+        try {
+            String tradeStatus = params.get("trade_status");
+            String outTradeNo = params.get("out_trade_no");
+            String tradeNo = params.get("trade_no");
+
+            log.info("收到支付宝回调: tradeStatus={}, outTradeNo={}, tradeNo={}", tradeStatus, outTradeNo, tradeNo);
+
+            Booking booking = bookingRepository.findByBookingNumber(outTradeNo).orElse(null);
+            if (booking == null) {
+                log.warn("回调对应的预订不存在: {}", outTradeNo);
+                return false;
+            }
+
+            // 只处理支付成功，避免重复处理
+            if (("TRADE_SUCCESS".equals(tradeStatus) || "TRADE_FINISHED".equals(tradeStatus))
+                    && booking.getPaymentStatus() != PaymentStatus.PAID) {
+                booking.setPaymentStatus(PaymentStatus.PAID);
+                booking.setStatus(BookingStatus.CONFIRMED);
+                booking = bookingRepository.save(booking);
+                log.info("支付宝回调处理成功，预订 {} 已更新为已支付", outTradeNo);
+                notificationHelper.notifyPaymentConfirmed(booking);
+            }
+
+            return true;
+        } catch (Exception e) {
+            log.error("处理支付宝回调异常", e);
+            return false;
         }
+    }
 
-        booking.setStatus(BookingStatus.CONFIRMED);
-        booking.setPaymentStatus(PaymentStatus.PAID);
+    /**
+     * 调用支付宝退款API
+     */
+    private void alipayRefund(String bookingNumber, BigDecimal amount) {
+        try {
+            AlipayClient alipayClient = new DefaultAlipayClient(
+                    alipayConfig.getGateway(),
+                    alipayConfig.getAppId(),
+                    alipayConfig.getPrivateKey(),
+                    "json",
+                    "UTF-8",
+                    alipayConfig.getAlipayPublicKey(),
+                    "RSA2"
+            );
 
-        booking = bookingRepository.save(booking);
-        log.info("Payment processed for booking {}", id);
+            com.alipay.api.request.AlipayTradeRefundRequest request = new com.alipay.api.request.AlipayTradeRefundRequest();
+            request.setBizContent("{" +
+                    "\"out_trade_no\":\"" + bookingNumber + "\"," +
+                    "\"refund_amount\":\"" + amount.toPlainString() + "\"," +
+                    "\"out_request_no\":\"refund_" + bookingNumber + "\"" +
+                    "}");
 
-        return bookingMapper.toResponse(booking);
+            com.alipay.api.response.AlipayTradeRefundResponse response = alipayClient.execute(request);
+
+            if (response.isSuccess()) {
+                log.info("支付宝退款成功: bookingNumber={}, amount={}", bookingNumber, amount);
+            } else {
+                log.error("支付宝退款失败: bookingNumber={}, code={}, msg={}, subMsg={}",
+                        bookingNumber, response.getCode(), response.getMsg(), response.getSubMsg());
+            }
+        } catch (AlipayApiException e) {
+            log.error("支付宝退款API调用异常: bookingNumber={}", bookingNumber, e);
+        }
     }
 
     @Override
@@ -448,6 +558,7 @@ public class BookingServiceImpl implements BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         if (booking.getPaymentStatus() == PaymentStatus.PAID) {
+            alipayRefund(booking.getBookingNumber(), booking.getTotalAmount());
             booking.setPaymentStatus(PaymentStatus.REFUNDED);
         }
 

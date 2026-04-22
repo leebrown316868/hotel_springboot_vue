@@ -280,14 +280,15 @@ public class DataInitializer {
                 logger.info("Creating room_types table...");
                 conn.createStatement().executeUpdate(
                     "CREATE TABLE IF NOT EXISTS room_types (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    "code VARCHAR NOT NULL UNIQUE, " +
-                    "name VARCHAR NOT NULL, " +
-                    "capacity INTEGER NOT NULL, " +
-                    "base_price DECIMAL NOT NULL, " +
-                    "active INTEGER NOT NULL DEFAULT 1, " +
-                    "created_at TIMESTAMP NOT NULL, " +
-                    "updated_at TIMESTAMP NOT NULL)"
+                    "id INT PRIMARY KEY AUTO_INCREMENT, " +
+                    "code VARCHAR(50) NOT NULL UNIQUE, " +
+                    "name VARCHAR(50) NOT NULL, " +
+                    "capacity INT NOT NULL, " +
+                    "base_price DECIMAL(10,2) NOT NULL, " +
+                    "active TINYINT(1) NOT NULL DEFAULT 1, " +
+                    "created_at DATETIME NOT NULL, " +
+                    "updated_at DATETIME NOT NULL) " +
+                    "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
                 );
                 conn.createStatement().executeUpdate("CREATE INDEX IF NOT EXISTS idx_room_types_code ON room_types(code)");
                 conn.createStatement().executeUpdate("CREATE INDEX IF NOT EXISTS idx_room_types_active ON room_types(active)");

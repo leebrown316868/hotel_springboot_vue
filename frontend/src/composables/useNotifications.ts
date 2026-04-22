@@ -4,7 +4,7 @@ import { notificationApi } from '../api/notification'
 export function useNotifications() {
   const unreadCount = ref(0)
   let pollingTimer: ReturnType<typeof setInterval> | null = null
-  const POLLING_INTERVAL = 30000 // 30秒
+  const POLLING_INTERVAL = 10000 // 10秒
 
   const fetchUnreadCount = async () => {
     try {

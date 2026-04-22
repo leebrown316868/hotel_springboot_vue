@@ -6,7 +6,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/about'
+      redirect: '/bookings/new'
     },
     {
       path: '/login',
@@ -53,7 +53,7 @@ const router = createRouter({
       path: '/bookings/new',
       name: 'booking-wizard',
       component: () => import('../views/BookingWizard.vue'),
-      meta: { requiresAuth: true, roles: ['CUSTOMER', 'ADMIN', 'STAFF'] }
+      meta: { public: true }
     },
     {
       path: '/staff-bookings',
@@ -103,6 +103,12 @@ const router = createRouter({
       name: 'history-feedback',
       component: () => import('../views/HistoryFeedback.vue'),
       meta: { requiresAuth: true, roles: ['CUSTOMER'] }
+    },
+    {
+      path: '/payment/result',
+      name: 'payment-result',
+      component: () => import('../views/PaymentResult.vue'),
+      meta: { public: true }
     }
   ]
 })

@@ -44,6 +44,7 @@ export interface BookingResponse {
   totalAmount: number
   paymentStatus: string
   createdAt: string
+  qrCode?: string
 }
 
 export interface BookingListResponse {

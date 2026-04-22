@@ -60,6 +60,34 @@ public class NotificationHelper {
     }
 
     /**
+     * 发送支付成功待入住通知（给所有员工）
+     */
+    public void notifyPaymentConfirmed(Booking booking) {
+        try {
+            List<String> staffEmails = getStaffEmails();
+            String title = "新订单待入住";
+            String message = String.format(
+                "客户 %s 已支付订单 %s，%s入住，房间 %s，请及时办理入住",
+                booking.getGuest().getName(),
+                booking.getBookingNumber(),
+                booking.getCheckInDate().format(DATE_FORMATTER),
+                booking.getRoom().getNumber()
+            );
+
+            for (String email : staffEmails) {
+                notificationService.createNotification(
+                    email, title, message,
+                    NotificationType.BOOKING, 1,
+                    "/staff-bookings"
+                );
+            }
+            log.info("Sent payment confirmed notification to {} staff", staffEmails.size());
+        } catch (Exception e) {
+            log.error("Failed to send payment confirmed notification for: {}", booking.getBookingNumber(), e);
+        }
+    }
+
+    /**
      * 发送预订取消通知
      */
     public void notifyBookingCancelled(Booking booking) {

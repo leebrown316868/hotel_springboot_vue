@@ -58,7 +58,7 @@ const handleLogin = () => {
 }
 
 const handleHome = () => {
-  router.push('/about')
+  router.push('/bookings/new')
 }
 
 const handleAbout = () => {

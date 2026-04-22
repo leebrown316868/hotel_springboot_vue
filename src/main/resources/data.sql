@@ -1,1 +1,0 @@
--- 客户表数据初始化由DataInitializer处理

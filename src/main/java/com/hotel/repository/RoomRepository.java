@@ -47,7 +47,7 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
      */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE rooms SET price = :price, updated_at = datetime('now') WHERE type = :typeName", nativeQuery = true)
+    @Query(value = "UPDATE rooms SET price = :price, updated_at = NOW() WHERE type = :typeName", nativeQuery = true)
     void updatePriceByType(@Param("typeName") String typeName, @Param("price") java.math.BigDecimal price);
 
     /**
@@ -55,6 +55,6 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
      */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE rooms SET capacity = :capacity, updated_at = datetime('now') WHERE type = :typeName", nativeQuery = true)
+    @Query(value = "UPDATE rooms SET capacity = :capacity, updated_at = NOW() WHERE type = :typeName", nativeQuery = true)
     void updateCapacityByType(@Param("typeName") String typeName, @Param("capacity") Integer capacity);
 }

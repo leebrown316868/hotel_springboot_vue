@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import SimpleHeader from '../components/SimpleHeader.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getMyBookings, cancelBooking } from '@/api/booking'
+import { getMyBookings, cancelBooking, processPayment, getBookingByNumber } from '@/api/booking'
 import { createReview } from '@/api/review'
+import QRCode from 'qrcode'
 import type { BookingResponse } from '@/types/booking'
 
 const router = useRouter()
@@ -18,6 +19,66 @@ const currentReview = ref({
   comment: ''
 })
 const myBookings = ref<BookingResponse[]>([])
+
+// 继续支付
+const paymentDialogVisible = ref(false)
+const paymentQrCodeUrl = ref('')
+const paymentCountdown = ref(900)
+const paymentPollingTimer = ref<number | null>(null)
+
+const canPay = (booking: BookingResponse) => {
+  return booking.status === 'PENDING' && booking.paymentStatus === 'UNPAID'
+}
+
+const handlePay = async (booking: BookingResponse) => {
+  try {
+    const res = await processPayment(booking.id, 'ALIPAY')
+    if (res.data.code === 200 && res.data.data) {
+      const qrContent = res.data.data.qrCode || ''
+      paymentQrCodeUrl.value = await QRCode.toDataURL(qrContent, { width: 200, margin: 1 })
+      paymentCountdown.value = 900
+      paymentDialogVisible.value = true
+      startPaymentPolling(booking.bookingNumber)
+    } else {
+      ElMessage.error(res.data.message || '创建支付订单失败')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '操作失败')
+  }
+}
+
+const startPaymentPolling = (bookingNumber: string) => {
+  stopPaymentPolling()
+  paymentPollingTimer.value = window.setInterval(async () => {
+    try {
+      const res = await getBookingByNumber(bookingNumber)
+      if (res.data.data && res.data.data.paymentStatus === 'PAID') {
+        stopPaymentPolling()
+        paymentDialogVisible.value = false
+        loadMyBookings()
+        ElMessage.success('支付成功！')
+      }
+    } catch { /* ignore */ }
+  }, 3000)
+}
+
+const stopPaymentPolling = () => {
+  if (paymentPollingTimer.value) {
+    window.clearInterval(paymentPollingTimer.value)
+    paymentPollingTimer.value = null
+  }
+}
+
+const closePaymentDialog = () => {
+  stopPaymentPolling()
+  paymentDialogVisible.value = false
+}
+
+const formatCountdown = (seconds: number) => {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
 
 const getStatusType = (status: string) => {
   const map: Record<string, string> = {
@@ -149,6 +210,10 @@ const goToNewBooking = () => {
 onMounted(() => {
   loadMyBookings()
 })
+
+onUnmounted(() => {
+  stopPaymentPolling()
+})
 </script>
 
 <template>
@@ -212,6 +277,7 @@ onMounted(() => {
             </div>
 
             <div class="mt-auto flex justify-end gap-3">
+              <el-button v-if="canPay(booking)" type="primary" @click="handlePay(booking)">继续支付</el-button>
               <el-button v-if="canCancel(booking.status)" plain type="danger" @click="handleCancel(booking)">取消预订</el-button>
               <el-button v-if="booking.status === 'CHECKED_OUT'" type="primary" plain @click="openReviewDialog(booking)">撰写评价</el-button>
             </div>
@@ -219,6 +285,23 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- 支付对话框 -->
+    <el-dialog v-model="paymentDialogVisible" width="420px" :close-on-click-modal="false" :close-on-press-escape="false" @close="closePaymentDialog">
+      <div class="text-center">
+        <h3 class="text-lg font-bold text-gray-900 mb-2">支付宝扫码支付</h3>
+        <p class="text-sm text-gray-500 mb-4">请使用支付宝扫描下方二维码完成支付</p>
+        <div class="bg-white border-2 border-gray-200 rounded-xl p-4 inline-block mb-4">
+          <img v-if="paymentQrCodeUrl" :src="paymentQrCodeUrl" alt="支付二维码" class="w-52 h-52" />
+        </div>
+        <div class="flex items-center justify-center gap-2 text-gray-400 text-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>剩余时间 <strong class="text-gray-600">{{ formatCountdown(paymentCountdown) }}</strong></span>
+        </div>
+      </div>
+    </el-dialog>
 
     <el-dialog v-model="reviewDialogVisible" title="撰写评价" width="500px">
       <div class="space-y-6">

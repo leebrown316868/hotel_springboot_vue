@@ -80,8 +80,9 @@ public class DatabaseMigration implements CommandLineRunner {
 
             if (!columns.next()) {
                 System.out.println("正在执行数据库迁移: 添加 guest_id 字段到 reviews 表...");
+                jdbcTemplate.execute("ALTER TABLE reviews ADD COLUMN guest_id INT;");
                 jdbcTemplate.execute(
-                    "ALTER TABLE reviews ADD COLUMN guest_id INTEGER REFERENCES guests(id);"
+                    "ALTER TABLE reviews ADD CONSTRAINT fk_reviews_guest FOREIGN KEY (guest_id) REFERENCES guests(id);"
                 );
                 System.out.println("✓ 数据库迁移完成: guest_id 字段已添加");
             } else {
@@ -98,58 +99,16 @@ public class DatabaseMigration implements CommandLineRunner {
      * 迁移: 使 reviews 表的 user_id 列可为空（SQLite 需要重建表）
      */
     private void migrateReviewsTableMakeUserIdNullable() {
-        try {
-            // 检查是否需要迁移（通过检查是否可以插入 null 值来判断）
-            // 但为了简单，我们直接尝试重建表
-            System.out.println("正在执行数据库迁移: 修改 reviews 表结构...");
-
-            // SQLite 不支持直接修改列约束，需要重建表
-            // 1. 创建新表
-            jdbcTemplate.execute(
-                "CREATE TABLE IF NOT EXISTS reviews_new (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "booking_id INTEGER NOT NULL, " +
-                "user_id INTEGER, " +
-                "guest_id INTEGER, " +
-                "rating INTEGER NOT NULL, " +
-                "comment TEXT, " +
-                "created_at TIMESTAMP NOT NULL, " +
-                "FOREIGN KEY (booking_id) REFERENCES bookings(id), " +
-                "FOREIGN KEY (user_id) REFERENCES users(id), " +
-                "FOREIGN KEY (guest_id) REFERENCES guests(id));"
-            );
-
-            // 2. 复制数据
-            jdbcTemplate.execute(
-                "INSERT INTO reviews_new (id, booking_id, user_id, guest_id, rating, comment, created_at) " +
-                "SELECT id, booking_id, user_id, guest_id, rating, comment, created_at FROM reviews;"
-            );
-
-            // 3. 删除旧表
-            jdbcTemplate.execute("DROP TABLE reviews;");
-
-            // 4. 重命名新表
-            jdbcTemplate.execute("ALTER TABLE reviews_new RENAME TO reviews;");
-
-            // 5. 重建索引
-            try {
-                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_reviews_booking_id ON reviews(booking_id);");
-                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);");
-                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_reviews_guest_id ON reviews(guest_id);");
-            } catch (Exception e) {
-                // 索引可能已存在，忽略错误
-            }
-
-            System.out.println("✓ 数据库迁移完成: reviews 表结构已更新");
-        } catch (Exception e) {
-            // 如果表已经是新结构，可能会报错，忽略
-            if (e.getMessage() != null && e.getMessage().contains("no such table")) {
-                System.out.println("✓ reviews 表结构已是最新，跳过迁移");
-            } else {
-                System.err.println("数据库迁移警告: " + e.getMessage());
-            }
-        }
+    try {
+        System.out.println("正在执行数据库迁移: 修改 reviews 表 user_id 列为可空...");
+        jdbcTemplate.execute(
+            "ALTER TABLE reviews MODIFY COLUMN user_id INT NULL"
+        );
+        System.out.println("✓ 数据库迁移完成: user_id 列已修改为可空");
+    } catch (Exception e) {
+        System.err.println("数据库迁移警告: " + e.getMessage());
     }
+}
 
     /**
      * 迁移: 添加 description 字段到 system_settings 表
